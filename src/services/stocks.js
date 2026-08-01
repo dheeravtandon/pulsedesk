@@ -220,17 +220,67 @@ async function priceAt(symbol, timestampMs) {
 
 /** Large, widely-held names with a volatility read so "stable" is measured, not asserted. */
 const POPULAR = [
-  { symbol: 'RELIANCE.NS', tag: 'India · Energy' }, { symbol: 'TCS.NS', tag: 'India · IT' },
-  { symbol: 'HDFCBANK.NS', tag: 'India · Bank' }, { symbol: 'INFY.NS', tag: 'India · IT' },
-  { symbol: 'ICICIBANK.NS', tag: 'India · Bank' }, { symbol: 'ITC.NS', tag: 'India · FMCG' },
-  { symbol: 'HINDUNILVR.NS', tag: 'India · FMCG' }, { symbol: 'LT.NS', tag: 'India · Infra' },
-  { symbol: 'BHARTIARTL.NS', tag: 'India · Telecom' }, { symbol: 'SBIN.NS', tag: 'India · Bank' },
-  { symbol: 'AAPL', tag: 'US · Tech' }, { symbol: 'MSFT', tag: 'US · Tech' },
-  { symbol: 'GOOGL', tag: 'US · Tech' }, { symbol: 'AMZN', tag: 'US · Retail' },
-  { symbol: 'NVDA', tag: 'US · Semis' }, { symbol: 'JNJ', tag: 'US · Pharma' },
-  { symbol: 'KO', tag: 'US · Beverages' }, { symbol: 'JPM', tag: 'US · Bank' },
-  { symbol: 'V', tag: 'US · Payments' }, { symbol: 'PG', tag: 'US · FMCG' }
+  { symbol: 'RELIANCE.NS', tag: 'India · Energy', sector: 'Energy' }, { symbol: 'ONGC.NS', tag: 'India · Energy', sector: 'Energy' },
+  { symbol: 'TCS.NS', tag: 'India · IT', sector: 'Technology' }, { symbol: 'INFY.NS', tag: 'India · IT', sector: 'Technology' },
+  { symbol: 'WIPRO.NS', tag: 'India · IT', sector: 'Technology' },
+  { symbol: 'HDFCBANK.NS', tag: 'India · Bank', sector: 'Banking' }, { symbol: 'ICICIBANK.NS', tag: 'India · Bank', sector: 'Banking' },
+  { symbol: 'SBIN.NS', tag: 'India · Bank', sector: 'Banking' },
+  { symbol: 'ITC.NS', tag: 'India · FMCG', sector: 'FMCG' }, { symbol: 'HINDUNILVR.NS', tag: 'India · FMCG', sector: 'FMCG' },
+  { symbol: 'LT.NS', tag: 'India · Infra', sector: 'Industrials' },
+  { symbol: 'BHARTIARTL.NS', tag: 'India · Telecom', sector: 'Telecom' },
+  { symbol: 'MARUTI.NS', tag: 'India · Auto', sector: 'Auto' }, { symbol: 'TATAMOTORS.NS', tag: 'India · Auto', sector: 'Auto' },
+  { symbol: 'SUNPHARMA.NS', tag: 'India · Pharma', sector: 'Pharma' }, { symbol: 'DRREDDY.NS', tag: 'India · Pharma', sector: 'Pharma' },
+  { symbol: 'TATASTEEL.NS', tag: 'India · Metals', sector: 'Metals' },
+  { symbol: 'NTPC.NS', tag: 'India · Power', sector: 'Power' }, { symbol: 'POWERGRID.NS', tag: 'India · Power', sector: 'Power' },
+  { symbol: 'AAPL', tag: 'US · Tech', sector: 'Technology' }, { symbol: 'MSFT', tag: 'US · Tech', sector: 'Technology' },
+  { symbol: 'GOOGL', tag: 'US · Tech', sector: 'Technology' }, { symbol: 'AMZN', tag: 'US · Retail', sector: 'Retail' },
+  { symbol: 'NVDA', tag: 'US · Semis', sector: 'Technology' }, { symbol: 'JNJ', tag: 'US · Pharma', sector: 'Pharma' },
+  { symbol: 'KO', tag: 'US · Beverages', sector: 'FMCG' }, { symbol: 'JPM', tag: 'US · Bank', sector: 'Banking' },
+  { symbol: 'V', tag: 'US · Payments', sector: 'Technology' }, { symbol: 'PG', tag: 'US · FMCG', sector: 'FMCG' },
+  { symbol: 'XOM', tag: 'US · Energy', sector: 'Energy' }, { symbol: 'CVX', tag: 'US · Energy', sector: 'Energy' }
 ];
+
+/** Google-Finance-style chart ranges: each maps to a Yahoo range+interval pair. */
+const RANGE_MAP = {
+  '1D': { range: '1d', interval: '5m' },
+  '5D': { range: '5d', interval: '15m' },
+  '1M': { range: '1mo', interval: '60m' },
+  '6M': { range: '6mo', interval: '1d' },
+  '1Y': { range: '1y', interval: '1d' },
+  '5Y': { range: '5y', interval: '1wk' }
+};
+
+/** Full timestamp+price series for the stock detail chart modal. */
+async function history(symbol, rangeKey = '1D') {
+  const cfg = RANGE_MAP[rangeKey] || RANGE_MAP['1D'];
+  let lastErr;
+  for (const host of HOSTS) {
+    try {
+      const j = await getJSON(
+        `${host}/v8/finance/chart/${encodeURIComponent(symbol)}?range=${cfg.range}&interval=${cfg.interval}&includePrePost=false`,
+        { timeout: 12000 }
+      );
+      const r = j.chart && j.chart.result && j.chart.result[0];
+      if (!r || !r.meta) continue;
+      const ts = r.timestamp || [];
+      const closes = ((r.indicators.quote[0] || {}).close) || [];
+      const points = ts
+        .map((t, i) => ({ t: t * 1000, c: closes[i] }))
+        .filter((p) => typeof p.c === 'number' && isFinite(p.c));
+      if (!points.length) continue;
+      return {
+        symbol: r.meta.symbol,
+        name: r.meta.longName || r.meta.shortName || symbol,
+        currency: r.meta.currency || 'USD',
+        range: rangeKey,
+        points
+      };
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  throw lastErr || new Error(`no history for ${symbol}`);
+}
 
 function annualVolatility(series) {
   if (!series || series.length < 20) return null;
@@ -258,6 +308,7 @@ async function popular() {
     return {
       ...c,
       tag: p.tag,
+      sector: p.sector,
       yearPct: first ? ((c.price - first) / first) * 100 : null,
       volatility: vol,
       // Below ~25% annualised is the practical dividing line between steady and jumpy.
@@ -369,6 +420,6 @@ async function fxRate(from, to) {
 }
 
 module.exports = {
-  chart, quotes, trending, hyped, indices, fxRate, scoreHype, search, priceAt, popular,
+  chart, quotes, trending, hyped, indices, fxRate, scoreHype, search, priceAt, popular, history,
   INDICES, UNIVERSE_US, UNIVERSE_IN, POPULAR
 };
