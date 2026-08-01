@@ -214,7 +214,7 @@ function buildTray() {
   tray = new Tray(iconImage.resize({ width: 16, height: 16 }));
   const menu = () =>
     Menu.buildFromTemplate([
-      { label: 'PulseDesk', enabled: false },
+      { label: `PulseDesk v${app.getVersion()} — created by Dheerav Tandon`, enabled: false },
       { type: 'separator' },
       { label: 'Show / Hide  (Ctrl+Alt+P)', click: toggleWindow },
       { label: 'Refresh now  (Ctrl+Alt+R)', click: refreshAll },
@@ -273,7 +273,7 @@ function buildTray() {
       { type: 'separator' },
       { label: 'Quit', click: () => app.quit() }
     ]);
-  tray.setToolTip('PulseDesk — markets, portfolio, weather');
+  tray.setToolTip('PulseDesk — markets, portfolio, weather · by Dheerav Tandon');
   tray.setContextMenu(menu());
   tray.on('click', toggleWindow);
 }
