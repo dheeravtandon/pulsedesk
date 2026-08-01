@@ -1,0 +1,45 @@
+/* Web/PWA overrides layered on top of the shared desktop stylesheet. */
+
+html, body { user-select: text; }
+
+/* The window chrome buttons belong to Electron only. */
+#btnMin, #btnHide { display: none; }
+.titlebar { -webkit-app-region: unset; }
+.shell { border-radius: 0; box-shadow: none; height: 100dvh; }
+
+/* Settings that only make sense on the desktop build. */
+.desktop-only { display: none !important; }
+
+.install-cta {
+  position: fixed; right: 14px; bottom: 14px; z-index: 60;
+  border: none; border-radius: 999px; padding: 11px 18px;
+  font: 700 12px/1 'Segoe UI', system-ui, sans-serif; letter-spacing: .6px; color: #fff;
+  background: linear-gradient(135deg, #7c5cff, #21d4fd);
+  box-shadow: 0 10px 30px rgba(124, 92, 255, .45); cursor: pointer;
+}
+.install-cta:active { transform: translateY(1px); }
+
+.install-tip {
+  position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 60;
+  background: rgba(18, 21, 42, .96); border: 1px solid rgba(140, 160, 255, .25);
+  border-radius: 14px; padding: 12px 14px; color: #e9edff;
+  font: 500 12px/1.5 'Segoe UI', system-ui, sans-serif; backdrop-filter: blur(14px);
+}
+.install-tip b { color: #21d4fd; }
+.install-close {
+  margin-left: 8px; border: 1px solid rgba(140, 160, 255, .3); background: rgba(255, 255, 255, .06);
+  color: #8f9bc7; border-radius: 7px; padding: 4px 9px; font-size: 11px; cursor: pointer;
+}
+
+/* Phones: single column, tighter chrome, safe-area aware. */
+@media (max-width: 620px) {
+  .titlebar { padding: 8px 10px; gap: 8px; }
+  .wordmark { font-size: 12px; letter-spacing: 2px; }
+  .titlebar-mid .stamp { display: none; }
+  .grid { padding: 9px; gap: 9px; padding-bottom: calc(9px + env(safe-area-inset-bottom)); }
+  .statusbar .hint { display: none; }
+  .pf-hero-main .v { font-size: 23px; }
+  .hype-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .h-sm { min-height: 340px; }
+  .h-lg { min-height: 520px; }
+}
