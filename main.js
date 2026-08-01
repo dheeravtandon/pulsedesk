@@ -88,6 +88,12 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'src', 'renderer', 'index.html'));
   applyWindowState();
 
+  if (process.argv.includes('--dev')) {
+    win.webContents.on('console-message', (_e, level, message, line, source) =>
+      console.log(`[renderer] ${message} (${String(source).split('/').pop()}:${line})`)
+    );
+  }
+
   const persist = () => {
     if (!win || win.isDestroyed() || win.isMinimized()) return;
     saveSettings({ bounds: win.getBounds() });
