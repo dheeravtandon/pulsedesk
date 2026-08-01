@@ -123,6 +123,150 @@ async function stooq(symbol) {
   };
 }
 
+/** Type-ahead over Yahoo's symbol directory — matches company names as well as tickers. */
+async function search(query) {
+  const q = String(query || '').trim();
+  if (q.length < 1) return [];
+  const KEEP = new Set(['EQUITY', 'ETF', 'INDEX', 'CRYPTOCURRENCY', 'CURRENCY', 'MUTUALFUND']);
+
+  for (const host of HOSTS) {
+    try {
+      const j = await cachedJSON(
+        `search:${q.toLowerCase()}`,
+        `${host}/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=14&newsCount=0&listsCount=0&enableFuzzyQuery=true`,
+        5 * 60 * 1000
+      );
+      const rows = (j.quotes || [])
+        .filter((r) => r.symbol && KEEP.has(r.quoteType))
+        .map((r) => ({
+          symbol: r.symbol,
+          name: r.longname || r.shortname || r.symbol,
+          exchange: r.exchDisp || r.exchange || '',
+          type: r.quoteType === 'CRYPTOCURRENCY' ? 'CRYPTO' : r.quoteType === 'MUTUALFUND' ? 'FUND' : r.quoteType,
+          region: /\.NS$/.test(r.symbol) ? 'NSE' : /\.BO$/.test(r.symbol) ? 'BSE' : r.exchDisp || ''
+        }));
+      // Indian listings first for an India-based user, then by how early the match appears.
+      rows.sort((a, b) => (/\.(NS|BO)$/.test(b.symbol) ? 1 : 0) - (/\.(NS|BO)$/.test(a.symbol) ? 1 : 0));
+      if (rows.length) return rows;
+    } catch {
+      /* try the next host */
+    }
+  }
+  return [];
+}
+
+/** Price of a symbol at a past moment; falls back to the nearest candle that exists. */
+async function priceAt(symbol, timestampMs) {
+  const now = Date.now();
+  const ts = Math.min(Number(timestampMs) || now, now);
+  const ageDays = (now - ts) / 864e5;
+
+  if (ageDays < 0.02) {
+    const live = await chart(symbol, '1d', '5m');
+    return { price: live.price, at: now, exact: true, currency: live.currency, name: live.name, granularity: 'live' };
+  }
+
+  // Widen the window step by step: a weekend, holiday or halt means the exact
+  // moment has no candle, and the honest answer is the nearest one that does.
+  const plans = [
+    ageDays <= 55 ? { interval: '15m', pad: 4 * 3600 } : null,
+    ageDays <= 55 ? { interval: '60m', pad: 36 * 3600 } : null,
+    { interval: '1d', pad: 7 * 864e2 },
+    { interval: '1d', pad: 30 * 864e2 },
+    { interval: '1wk', pad: 120 * 864e2 }
+  ].filter(Boolean);
+
+  const sec = Math.floor(ts / 1000);
+
+  for (const plan of plans) {
+    for (const host of HOSTS) {
+      try {
+        const period1 = Math.max(0, sec - plan.pad);
+        const period2 = Math.min(Math.floor(now / 1000), sec + plan.pad);
+        const j = await getJSON(
+          `${host}/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=${plan.interval}`,
+          { timeout: 12000 }
+        );
+        const r = j.chart && j.chart.result && j.chart.result[0];
+        if (!r || !r.timestamp) continue;
+        const closes = (r.indicators.quote[0] || {}).close || [];
+
+        let best = null;
+        r.timestamp.forEach((t, i) => {
+          const c = closes[i];
+          if (typeof c !== 'number' || !isFinite(c)) return;
+          const d = Math.abs(t * 1000 - ts);
+          if (!best || d < best.d) best = { d, price: c, at: t * 1000 };
+        });
+        if (best) {
+          return {
+            price: best.price,
+            at: best.at,
+            exact: best.d < 6 * 36e5,
+            currency: r.meta.currency,
+            name: r.meta.longName || r.meta.shortName || symbol,
+            granularity: plan.interval
+          };
+        }
+      } catch {
+        /* try the next host, then the next plan */
+      }
+    }
+  }
+
+  const daily = await chart(symbol, '2y', '1d');
+  return { price: daily.price, at: now, exact: false, currency: daily.currency, name: daily.name, granularity: 'fallback' };
+}
+
+/** Large, widely-held names with a volatility read so "stable" is measured, not asserted. */
+const POPULAR = [
+  { symbol: 'RELIANCE.NS', tag: 'India · Energy' }, { symbol: 'TCS.NS', tag: 'India · IT' },
+  { symbol: 'HDFCBANK.NS', tag: 'India · Bank' }, { symbol: 'INFY.NS', tag: 'India · IT' },
+  { symbol: 'ICICIBANK.NS', tag: 'India · Bank' }, { symbol: 'ITC.NS', tag: 'India · FMCG' },
+  { symbol: 'HINDUNILVR.NS', tag: 'India · FMCG' }, { symbol: 'LT.NS', tag: 'India · Infra' },
+  { symbol: 'BHARTIARTL.NS', tag: 'India · Telecom' }, { symbol: 'SBIN.NS', tag: 'India · Bank' },
+  { symbol: 'AAPL', tag: 'US · Tech' }, { symbol: 'MSFT', tag: 'US · Tech' },
+  { symbol: 'GOOGL', tag: 'US · Tech' }, { symbol: 'AMZN', tag: 'US · Retail' },
+  { symbol: 'NVDA', tag: 'US · Semis' }, { symbol: 'JNJ', tag: 'US · Pharma' },
+  { symbol: 'KO', tag: 'US · Beverages' }, { symbol: 'JPM', tag: 'US · Bank' },
+  { symbol: 'V', tag: 'US · Payments' }, { symbol: 'PG', tag: 'US · FMCG' }
+];
+
+function annualVolatility(series) {
+  if (!series || series.length < 20) return null;
+  const rets = [];
+  for (let i = 1; i < series.length; i++) {
+    if (series[i - 1] > 0) rets.push(Math.log(series[i] / series[i - 1]));
+  }
+  if (rets.length < 15) return null;
+  const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
+  const variance = rets.reduce((a, b) => a + (b - mean) ** 2, 0) / (rets.length - 1);
+  return Math.sqrt(variance) * Math.sqrt(252) * 100;
+}
+
+async function popular() {
+  const rows = await pool(POPULAR, 6, async (p) => {
+    const j = await getJSON(
+      `${HOSTS[0]}/v8/finance/chart/${encodeURIComponent(p.symbol)}?range=1y&interval=1d`,
+      { timeout: 12000 }
+    );
+    const c = normalizeChart(j, true);
+    if (!c) return null;
+    const closes = ((j.chart.result[0].indicators.quote[0] || {}).close || []).filter((v) => typeof v === 'number' && isFinite(v));
+    const first = closes[0];
+    const vol = annualVolatility(closes);
+    return {
+      ...c,
+      tag: p.tag,
+      yearPct: first ? ((c.price - first) / first) * 100 : null,
+      volatility: vol,
+      // Below ~25% annualised is the practical dividing line between steady and jumpy.
+      stability: vol == null ? 'unknown' : vol < 18 ? 'very steady' : vol < 25 ? 'steady' : vol < 40 ? 'moves a lot' : 'volatile'
+    };
+  });
+  return rows.filter(Boolean).sort((a, b) => (a.volatility ?? 999) - (b.volatility ?? 999));
+}
+
 async function quotes(symbols, range = '1d', interval = '5m') {
   const list = [...new Set(symbols.filter(Boolean))];
   const rows = await pool(list, 6, (s) => chart(s, range, interval));
@@ -224,4 +368,7 @@ async function fxRate(from, to) {
   }
 }
 
-module.exports = { chart, quotes, trending, hyped, indices, fxRate, scoreHype, INDICES, UNIVERSE_US, UNIVERSE_IN };
+module.exports = {
+  chart, quotes, trending, hyped, indices, fxRate, scoreHype, search, priceAt, popular,
+  INDICES, UNIVERSE_US, UNIVERSE_IN, POPULAR
+};
