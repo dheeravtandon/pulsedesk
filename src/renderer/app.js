@@ -45,7 +45,9 @@ function coinPrice(p) {
   if (p >= 1000) return `$${p.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   if (p >= 1) return `$${p.toFixed(3)}`;
   if (p >= 0.001) return `$${p.toFixed(5)}`;
-  return `$${p.toExponential(2)}`;
+  // Micro-cap coins read better in full decimals than in exponent notation.
+  const fixed = p.toFixed(Math.min(12, Math.ceil(-Math.log10(p)) + 3));
+  return `$${fixed.replace(/0+$/, '')}`;
 }
 
 const ago = (ts) => {
