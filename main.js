@@ -210,10 +210,8 @@ async function refreshAll() {
 
 /* ---------- tray ---------- */
 
-function buildTray() {
-  tray = new Tray(iconImage.resize({ width: 16, height: 16 }));
-  const menu = () =>
-    Menu.buildFromTemplate([
+function trayMenu() {
+  return Menu.buildFromTemplate([
       { label: `PulseDesk v${app.getVersion()} — created by Dheerav Tandon`, enabled: false },
       { type: 'separator' },
       { label: 'Show / Hide  (Ctrl+Alt+P)', click: toggleWindow },
@@ -235,7 +233,7 @@ function buildTray() {
         click: (i) => {
           saveSettings({ clickThrough: i.checked });
           applyWindowState();
-          tray.setContextMenu(menu());
+          refreshTray();
         }
       },
       {
@@ -272,9 +270,18 @@ function buildTray() {
       { label: 'Open data folder', click: () => shell.openPath(app.getPath('userData')) },
       { type: 'separator' },
       { label: 'Quit', click: () => app.quit() }
-    ]);
+  ]);
+}
+
+/** Rebuilt whenever settings change so the checkboxes reflect reality. */
+function refreshTray() {
+  if (tray) tray.setContextMenu(trayMenu());
+}
+
+function buildTray() {
+  tray = new Tray(iconImage.resize({ width: 16, height: 16 }));
   tray.setToolTip('PulseDesk — markets, portfolio, weather · by Dheerav Tandon');
-  tray.setContextMenu(menu());
+  refreshTray();
   tray.on('click', toggleWindow);
 }
 
@@ -326,7 +333,7 @@ function registerIpc() {
     if (patch.refresh) scheduleRefresh();
     if (patch.weather) await refreshSlow();
     if (patch.hyperMarket) await refreshMedium();
-    if (tray) tray.setContextMenu(tray.contextMenu);
+    refreshTray();
     return settings;
   });
 
