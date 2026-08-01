@@ -6,7 +6,8 @@ const BINANCE = 'https://api.binance.com/api/v3';
 const CG = 'https://api.coingecko.com/api/v3';
 
 const EXCLUDE = /(UP|DOWN|BULL|BEAR)USDT$/;
-const STABLE = /^(USDC|FDUSD|TUSD|BUSD|DAI|USDP|EURI|AEUR|PAXG)USDT$/;
+// Pegged assets never "pump" — they only add noise to both lists.
+const STABLE = /^(USDC|USD1|USDE|USDD|USDP|USDS|USDF|USDY|FDUSD|TUSD|BUSD|BFUSD|DAI|RLUSD|PYUSD|EURI|EURT|AEUR|XAUT|PAXG)USDT$/;
 
 const NAMES = {
   BTC: 'Bitcoin', ETH: 'Ethereum', SOL: 'Solana', XRP: 'XRP', BNB: 'BNB', DOGE: 'Dogecoin',
@@ -18,12 +19,57 @@ const NAMES = {
 
 const label = (base) => NAMES[base] || base;
 
+/** One 24h ticker pull feeds both the pump ranking and the most-traded list. */
+async function tickers24h() {
+  return cachedJSON('binance:24h', `${BINANCE}/ticker/24hr`, 45000, { timeout: 15000 });
+}
+
+const tradable = (all) =>
+  all.filter((t) => t.symbol.endsWith('USDT') && !EXCLUDE.test(t.symbol) && !STABLE.test(t.symbol));
+
+/** The pairs people are actually putting money through right now, by 24h turnover. */
+async function mostTraded(limit = 10) {
+  try {
+    const all = await tickers24h();
+    return tradable(all)
+      .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+      .slice(0, limit)
+      .map((t) => {
+        const base = t.symbol.replace(/USDT$/, '');
+        return {
+          symbol: base,
+          name: label(base),
+          pair: t.symbol,
+          price: parseFloat(t.lastPrice),
+          change24h: parseFloat(t.priceChangePercent) || 0,
+          volume24hUsd: parseFloat(t.quoteVolume) || 0,
+          trades24h: t.count || 0,
+          source: 'Binance'
+        };
+      });
+  } catch {
+    const j = await settled(
+      cachedJSON('cg:markets', `${CG}/coins/markets?vs_currency=usd&order=volume_desc&per_page=120&page=1&price_change_percentage=1h,24h`, 120000),
+      []
+    );
+    return (j || []).slice(0, limit).map((c) => ({
+      symbol: (c.symbol || '').toUpperCase(),
+      name: c.name,
+      pair: `${(c.symbol || '').toUpperCase()}USD`,
+      price: c.current_price,
+      change24h: c.price_change_percentage_24h_in_currency || 0,
+      volume24hUsd: c.total_volume || 0,
+      trades24h: 0,
+      source: 'CoinGecko'
+    }));
+  }
+}
+
 /** Rolling 5-hour movers from Binance (exact 5h window), with a CoinGecko 1h/24h fallback. */
 async function pumped(limit = 10, windowSize = '5h') {
   try {
-    const all = await getJSON(`${BINANCE}/ticker/24hr`, { timeout: 15000 });
-    const liquid = all
-      .filter((t) => t.symbol.endsWith('USDT') && !EXCLUDE.test(t.symbol) && !STABLE.test(t.symbol))
+    const all = await tickers24h();
+    const liquid = tradable(all)
       .filter((t) => parseFloat(t.quoteVolume) > 3_000_000)
       .sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
       .slice(0, 80);
@@ -121,4 +167,4 @@ async function globalStats() {
   };
 }
 
-module.exports = { pumped, fearGreed, globalStats };
+module.exports = { pumped, mostTraded, fearGreed, globalStats };
