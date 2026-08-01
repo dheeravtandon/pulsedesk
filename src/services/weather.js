@@ -14,7 +14,11 @@ const CODES = {
 };
 
 async function locate(manual) {
-  if (manual && isFinite(manual.lat) && isFinite(manual.lon)) return manual;
+  // isFinite(null) is true, so null coordinates must be rejected explicitly.
+  const has = (v) => v != null && v !== '' && isFinite(Number(v));
+  if (manual && has(manual.lat) && has(manual.lon)) {
+    return { ...manual, lat: Number(manual.lat), lon: Number(manual.lon) };
+  }
   const a = await settled(cachedJSON('geo:ipapi', 'https://ipapi.co/json/', 6 * 60 * 60 * 1000));
   if (a && a.latitude) {
     return { lat: a.latitude, lon: a.longitude, city: a.city, region: a.region, country: a.country_name, tz: a.timezone };
@@ -60,7 +64,7 @@ async function today(manual) {
   const start = nowIso < 0 ? 0 : nowIso;
 
   return {
-    city: [loc.city, loc.country].filter(Boolean).join(', '),
+    city: [loc.city, loc.country].filter(Boolean).join(', ') || `${Number(loc.lat).toFixed(2)}, ${Number(loc.lon).toFixed(2)}`,
     tempC: c.temperature_2m,
     feelsC: c.apparent_temperature,
     humidity: c.relative_humidity_2m,
