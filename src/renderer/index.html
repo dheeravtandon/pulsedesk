@@ -13,7 +13,10 @@
     <header class="titlebar" id="titlebar">
       <div class="brand">
         <span class="logo">◈</span>
-        <span class="wordmark">PULSE<b>DESK</b></span>
+        <span class="brand-text">
+          <span class="wordmark">PULSE<b>DESK</b></span>
+          <span class="byline">by Dheerav Tandon</span>
+        </span>
         <span class="pulse-chip" id="pulseChip">—</span>
       </div>
 
@@ -27,6 +30,7 @@
         <button class="tb" id="btnRefresh" title="Refresh (Ctrl+Alt+R)">⟳</button>
         <button class="tb" id="btnCompact" title="Compact mode">▤</button>
         <button class="tb" id="btnSettings" title="Settings">⚙</button>
+        <button class="tb" id="btnFull" title="Full screen (F11)">⛶</button>
         <button class="tb" id="btnMin" title="Minimise">—</button>
         <button class="tb danger" id="btnHide" title="Hide to tray (Ctrl+Alt+P)">✕</button>
       </div>
@@ -36,6 +40,47 @@
     <div class="tape" id="tape"><div class="tape-track" id="tapeTrack"></div></div>
 
     <main class="grid" id="grid">
+      <!-- PORTFOLIO -->
+      <section class="card span-4 h-md" id="cardPortfolio">
+        <div class="card-head">
+          <h2>💼 My Portfolio <span class="sub" id="pfSub">—</span></h2>
+          <div class="head-actions">
+            <div class="seg" id="curToggle">
+              <button type="button" data-cur="INR">₹ INR</button>
+              <button type="button" data-cur="USD">$ USD</button>
+            </div>
+            <select id="baseCur" class="mini-select" title="Other base currency">
+              <option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>JPY</option>
+            </select>
+            <button class="mini solid" id="btnAdd">+ Add holding</button>
+          </div>
+        </div>
+
+        <div class="pf-body">
+          <div class="pf-col">
+            <div class="pf-hero">
+              <div class="pf-hero-main">
+                <span class="k">Net worth</span>
+                <span class="v" id="pfNet">—</span>
+                <span class="d" id="pfDay">—</span>
+              </div>
+              <div class="pf-spark" id="pfSpark"></div>
+            </div>
+            <div class="stat-row" id="pfStats"></div>
+          </div>
+
+          <div class="pf-col alloc">
+            <div class="donut" id="donut"></div>
+            <div class="alloc-legend" id="allocLegend"></div>
+          </div>
+
+          <div class="pf-col">
+            <div class="col-label">Holdings <span id="holdCount"></span></div>
+            <div class="holdings" id="holdings"></div>
+          </div>
+        </div>
+      </section>
+
       <!-- HYPE -->
       <section class="card span-4 h-sm" id="cardHype">
         <div class="card-head">
@@ -43,37 +88,6 @@
           <span class="badge live" id="hypeMeta">—</span>
         </div>
         <div class="hype-grid" id="hypeGrid"></div>
-      </section>
-
-      <!-- PORTFOLIO -->
-      <section class="card span-2 h-lg" id="cardPortfolio">
-        <div class="card-head">
-          <h2>💼 My Portfolio <span class="sub" id="pfSub">—</span></h2>
-          <div class="head-actions">
-            <select id="baseCur" class="mini-select" title="Base currency">
-              <option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option>
-            </select>
-            <button class="mini" id="btnAdd">+ Add</button>
-          </div>
-        </div>
-
-        <div class="pf-hero">
-          <div class="pf-hero-main">
-            <span class="k">Net worth</span>
-            <span class="v" id="pfNet">—</span>
-            <span class="d" id="pfDay">—</span>
-          </div>
-          <div class="pf-spark" id="pfSpark"></div>
-        </div>
-
-        <div class="stat-row" id="pfStats"></div>
-
-        <div class="alloc" id="allocWrap">
-          <div class="donut" id="donut"></div>
-          <div class="alloc-legend" id="allocLegend"></div>
-        </div>
-
-        <div class="holdings" id="holdings"></div>
       </section>
 
       <!-- NEWS -->
@@ -93,11 +107,28 @@
       <!-- CRYPTO -->
       <section class="card span-2 h-lg" id="cardCrypto">
         <div class="card-head">
-          <h2>🚀 Crypto Pumps <span class="sub">last 5 hours · top 10</span></h2>
-          <span class="badge" id="cryptoMeta">—</span>
+          <h2>🚀 Crypto <span class="sub" id="cryptoSub">last 5 hours · top 10</span></h2>
+          <div class="head-actions">
+            <button class="chip-btn active" data-crypto="pumps">Pumps 5h</button>
+            <button class="chip-btn" data-crypto="traded">Most bought</button>
+          </div>
         </div>
         <div class="crypto-list" id="cryptoList"></div>
         <div class="crypto-foot" id="cryptoFoot"></div>
+      </section>
+
+      <!-- POPULAR & STABLE -->
+      <section class="card span-2 h-lg" id="cardPopular">
+        <div class="card-head">
+          <h2>⭐ Popular &amp; Steady <span class="sub">big names, ranked by how calm they are</span></h2>
+          <div class="head-actions">
+            <button class="chip-btn active" data-pop="ALL">All</button>
+            <button class="chip-btn" data-pop="IN">🇮🇳 India</button>
+            <button class="chip-btn" data-pop="US">🇺🇸 US</button>
+          </div>
+        </div>
+        <div class="pop-list" id="popList"></div>
+        <div class="crypto-foot">Steadiness = 1-year annualised volatility. Lower means the price swings less. <b>Not advice.</b></div>
       </section>
 
       <!-- WEATHER + SESSIONS -->
@@ -112,26 +143,45 @@
     <footer class="statusbar">
       <span id="errBar" class="err"></span>
       <span class="spacer"></span>
-      <span class="hint">Ctrl+Alt+P hide · Ctrl+Alt+R refresh · drag the title bar to move</span>
+      <span class="hint">Ctrl+Alt+P hide · Ctrl+Alt+R refresh · F11 full screen</span>
       <span class="credit">created by <b>Dheerav Tandon</b></span>
     </footer>
   </div>
 
   <!-- add holding modal -->
   <div class="modal-backdrop" id="modalAdd" hidden>
-    <div class="modal">
-      <h3>Add holding</h3>
-      <label>Symbol <input id="fSymbol" placeholder="RELIANCE.NS · AAPL · BTC-USD" autocomplete="off" /></label>
-      <div class="lookup" id="lookup"></div>
-      <div class="row2">
-        <label>Quantity <input id="fQty" type="number" step="any" placeholder="10" /></label>
-        <label>Avg buy price <input id="fAvg" type="number" step="any" placeholder="2450" /></label>
+    <div class="modal wide">
+      <h3>Add a holding</h3>
+
+      <label>Search a company or ticker
+        <input id="fSymbol" placeholder="Type: reliance, tata, apple, bitcoin…" autocomplete="off" spellcheck="false" />
+      </label>
+      <div class="suggest" id="suggest" hidden></div>
+      <div class="picked" id="picked" hidden></div>
+
+      <label>When did you buy it?</label>
+      <div class="seg wide-seg" id="whenToggle">
+        <button type="button" data-when="now" class="active">Right now</button>
+        <button type="button" data-when="past">Pick date &amp; time</button>
       </div>
+      <label id="whenPickWrap" hidden>Purchase date &amp; time
+        <input id="fWhen" type="datetime-local" />
+      </label>
+
+      <div class="row2">
+        <label>Quantity <input id="fQty" type="number" step="any" min="0" placeholder="10" /></label>
+        <label>Buy price <span class="auto-tag" id="priceTag">auto</span>
+          <input id="fAvg" type="number" step="any" min="0" placeholder="fetched automatically" />
+        </label>
+      </div>
+
+      <div class="invest-preview" id="investPreview"></div>
+
       <div class="modal-actions">
         <button class="mini ghost" id="btnCancelAdd">Cancel</button>
         <button class="mini solid" id="btnSaveAdd">Save holding</button>
       </div>
-      <p class="tip">Tip: NSE = <b>SYMBOL.NS</b>, BSE = <b>SYMBOL.BO</b>, US = plain ticker, crypto = <b>BTC-USD</b>.</p>
+      <p class="tip">Price fills in from the market automatically — for “right now” it uses the live price, for a past date it uses the price at that moment. You can always type your own.</p>
     </div>
   </div>
 
@@ -156,6 +206,7 @@
         <button class="mini ghost" id="btnCloseSet">Close</button>
         <button class="mini solid" id="btnSaveSet">Apply</button>
       </div>
+      <p class="tip">Created by <b>Dheerav Tandon</b> · free to use · your holdings never leave this device.</p>
     </div>
   </div>
 
