@@ -45,14 +45,23 @@ function addHolding(h) {
   if (!isFinite(qty) || qty <= 0) throw new Error('quantity must be > 0');
   if (!isFinite(avgPrice) || avgPrice < 0) throw new Error('average price must be >= 0');
 
+  const buyTs = Number(h.buyTs) || Date.now();
+  const buyDate = h.buyDate || new Date(buyTs).toISOString().slice(0, 10);
+
   const existing = p.holdings.find((x) => x.symbol === symbol);
   if (existing) {
     // Weighted-average merge so repeat buys of the same scrip stay one row.
     const totalQty = existing.qty + qty;
     existing.avgPrice = (existing.qty * existing.avgPrice + qty * avgPrice) / totalQty;
     existing.qty = totalQty;
+    // The oldest purchase is the one the holding period should be measured from.
+    if (!existing.buyTs || buyTs < existing.buyTs) {
+      existing.buyTs = buyTs;
+      existing.buyDate = buyDate;
+    }
+    existing.lots = (existing.lots || 1) + 1;
   } else {
-    p.holdings.push({ id: uid(), symbol, qty, avgPrice, buyDate: h.buyDate || new Date().toISOString().slice(0, 10) });
+    p.holdings.push({ id: uid(), symbol, qty, avgPrice, buyTs, buyDate, name: h.name || null, lots: 1 });
   }
   return write(p);
 }
@@ -146,9 +155,11 @@ async function valuate() {
     const value = h.qty * price * rate;
     const pnl = value - invested;
     const dayPnl = h.qty * (price - prev) * rate;
+    const heldDays = h.buyTs ? Math.max(0, Math.round((Date.now() - h.buyTs) / 864e5)) : null;
     return {
       ...h,
-      name: (quote && quote.name) || h.symbol,
+      heldDays,
+      name: (quote && quote.name) || h.name || h.symbol,
       exchange: (quote && quote.exchange) || '',
       currency: cur,
       fxRate: rate,
