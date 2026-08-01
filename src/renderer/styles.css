@@ -377,6 +377,13 @@ button, input, select { font-family: inherit; color: inherit; }
   border-top: 1px solid var(--line); background: rgba(8, 10, 24, 0.7);
 }
 .spacer { flex: 1; }
+.credit {
+  padding-left: 12px; margin-left: 10px;
+  border-left: 1px solid var(--line);
+  color: rgba(143, 155, 199, 0.55);
+  letter-spacing: 0.4px; white-space: nowrap;
+}
+.credit b { font-weight: 700; color: rgba(195, 182, 255, 0.75); }
 .err { color: #ffb37a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
 
 /* ---------- modals ---------- */
