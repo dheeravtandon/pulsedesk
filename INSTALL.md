@@ -67,15 +67,17 @@ Open **https://dheeravtandon.github.io/pulsedesk/** in Chrome or Edge and click 
 ## 💼 Adding your holdings
 
 1. Click **+ Add holding**.
-2. Start typing a company name — `reliance`, `tata`, `apple`, `bitcoin`. A list appears; click the right one. NSE shares end in **.NS**, BSE in **.BO**.
+2. Start typing a company name — `reliance`, `tata`, `apple`, `bitcoin`. A list appears; click the right one. NSE shares end in **.NS**, BSE in **.BO**. Recent headlines about that company show up automatically so you have context before you buy.
 3. Choose when you bought it:
    - **Right now** — uses the live price
    - **Pick date & time** — uses the actual market price at that moment
 4. The buy price fills in by itself. Type over it if your price was different (brokerage, different lot, etc.).
-5. Enter how many shares, and the box below shows what it cost and what it's worth now.
+5. Choose **By quantity** if you know how many shares, or **By amount invested** if you only remember how much money you put in — the app works out the shares for you.
 6. **Save holding.**
 
 Switch between **₹ INR** and **$ USD** with the toggle in the portfolio header — everything converts at the live exchange rate.
+
+Click any stock anywhere in the app (Hype Radar, Popular & Steady, or a holding) to see its price chart across 1D/5D/1M/6M/1Y/5Y and its latest related news.
 
 Your holdings are stored **on your own device only** — in the app's data folder on PC, in the browser's storage on phone. There is no server holding your portfolio, and no way for anyone (including the developer) to see it.
 
