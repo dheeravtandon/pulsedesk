@@ -162,7 +162,7 @@ async function route(request, env, ctx) {
       return json({
         name: 'PulseDesk API',
         author: 'Dheerav Tandon',
-        endpoints: ['/api/indices', '/api/news', '/api/hyped', '/api/crypto', '/api/sessions', '/api/weather', '/api/quotes', '/api/fx', '/api/lookup', '/api/ping', '/api/stats', '/api/health']
+        endpoints: ['/api/indices', '/api/news', '/api/hyped', '/api/popular', '/api/crypto', '/api/sessions', '/api/weather', '/api/quotes', '/api/fx', '/api/lookup', '/api/search', '/api/price-at', '/api/ping', '/api/stats', '/api/health']
       });
 
     case '/api/indices':
@@ -181,13 +181,31 @@ async function route(request, env, ctx) {
 
     case '/api/crypto':
       return cached(request, ctx, 60, async () => {
-        const [rows, fng, global] = await Promise.all([
+        const [rows, traded, fng, global] = await Promise.all([
           crypto.pumped(10),
+          crypto.mostTraded(10).catch(() => []),
           crypto.fearGreed().catch(() => null),
           crypto.globalStats().catch(() => null)
         ]);
-        return { rows, fng, global };
+        return { rows, traded, fng, global };
       });
+
+    case '/api/popular':
+      return cached(request, ctx, 900, () => stocks.popular());
+
+    case '/api/search': {
+      const q = (qp.get('q') || '').trim();
+      if (q.length < 1) return json([], 60);
+      return cached(request, ctx, 300, () => stocks.search(q));
+    }
+
+    case '/api/price-at': {
+      const symbol = (qp.get('symbol') || '').trim();
+      const ts = parseInt(qp.get('ts'), 10);
+      if (!symbol) return fail('symbol required', 400);
+      // Bucket to the minute so repeated lookups of the same moment share a cache entry.
+      return cached(request, ctx, 600, () => stocks.priceAt(symbol, isFinite(ts) ? ts : Date.now()));
+    }
 
     case '/api/sessions': {
       const sessions = market.sessions();

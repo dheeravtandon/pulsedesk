@@ -124,7 +124,8 @@
       const pnl = value - invested;
       return {
         ...h,
-        name: (q && q.name) || h.symbol,
+        heldDays: h.buyTs ? Math.max(0, Math.round((Date.now() - h.buyTs) / 864e5)) : null,
+        name: (q && q.name) || h.name || h.symbol,
         currency: cur,
         price,
         prevClose: prev,
@@ -234,11 +235,17 @@
   async function refreshMedium() {
     const s = read(LS.settings, DEFAULT_SETTINGS);
     const held = ((payload.portfolio && payload.portfolio.rows) || []).map((r) => r.symbol).join(',');
-    const [feed, hyped] = await Promise.all([
+    const [feed, hyped, popular] = await Promise.all([
       guard('news', () => api('/api/news')),
-      guard('hyped', () => api(`/api/hyped?market=${s.hyperMarket || 'both'}${held ? `&symbols=${encodeURIComponent(held)}` : ''}`))
+      guard('hyped', () => api(`/api/hyped?market=${s.hyperMarket || 'both'}${held ? `&symbols=${encodeURIComponent(held)}` : ''}`)),
+      guard('popular', () => api('/api/popular'))
     ]);
-    emit({ news: feed || payload.news || { items: [], counts: {} }, hyped: hyped || payload.hyped || [], meta: meta() });
+    emit({
+      news: feed || payload.news || { items: [], counts: {} },
+      hyped: hyped || payload.hyped || [],
+      popular: popular || payload.popular || [],
+      meta: meta()
+    });
   }
 
   async function refreshSlow() {
@@ -271,13 +278,19 @@
         const qty = Number(h.qty);
         const avgPrice = Number(h.avgPrice);
         if (!symbol || !isFinite(qty) || qty <= 0 || !isFinite(avgPrice)) throw new Error('invalid holding');
+        const buyTs = Number(h.buyTs) || Date.now();
+        const buyDate = new Date(buyTs).toISOString().slice(0, 10);
         const existing = p.holdings.find((x) => x.symbol === symbol);
         if (existing) {
           const total = existing.qty + qty;
           existing.avgPrice = (existing.qty * existing.avgPrice + qty * avgPrice) / total;
           existing.qty = total;
+          if (!existing.buyTs || buyTs < existing.buyTs) {
+            existing.buyTs = buyTs;
+            existing.buyDate = buyDate;
+          }
         } else {
-          p.holdings.push({ id: uid(), symbol, qty, avgPrice, buyDate: new Date().toISOString().slice(0, 10) });
+          p.holdings.push({ id: uid(), symbol, qty, avgPrice, buyTs, buyDate, name: h.name || null });
         }
         portfolioStore.write(p);
         const v = await valuate();
@@ -343,12 +356,29 @@
     win: {
       minimize: async () => {},
       hide: async () => {},
-      quit: async () => {}
+      quit: async () => {},
+      toggleMaximize: () => window.pulse.win.toggleFullscreen(),
+      toggleFullscreen: async () => {
+        try {
+          if (document.fullscreenElement) {
+            await document.exitFullscreen();
+            return false;
+          }
+          await document.documentElement.requestFullscreen();
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      state: async () => ({ maximized: false, fullscreen: !!document.fullscreenElement })
     },
     openExternal: async (url) => {
       if (/^https?:\/\//i.test(url)) window.open(url, '_blank', 'noopener,noreferrer');
     },
-    lookup: async (symbol) => api(`/api/lookup?symbol=${encodeURIComponent(symbol)}`).catch((e) => ({ error: e.message }))
+    lookup: async (symbol) => api(`/api/lookup?symbol=${encodeURIComponent(symbol)}`).catch((e) => ({ error: e.message })),
+    search: async (query) => api(`/api/search?q=${encodeURIComponent(query)}`).catch(() => []),
+    priceAt: async (symbol, ts) =>
+      api(`/api/price-at?symbol=${encodeURIComponent(symbol)}&ts=${Math.round(Number(ts) / 60000) * 60000}`).catch((e) => ({ error: e.message }))
   };
 
   /* --------------------------------- start --------------------------------- */
