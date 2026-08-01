@@ -330,27 +330,74 @@ var require_stocks = __commonJS({
       return { price: daily.price, at: now, exact: false, currency: daily.currency, name: daily.name, granularity: "fallback" };
     }
     var POPULAR = [
-      { symbol: "RELIANCE.NS", tag: "India \xB7 Energy" },
-      { symbol: "TCS.NS", tag: "India \xB7 IT" },
-      { symbol: "HDFCBANK.NS", tag: "India \xB7 Bank" },
-      { symbol: "INFY.NS", tag: "India \xB7 IT" },
-      { symbol: "ICICIBANK.NS", tag: "India \xB7 Bank" },
-      { symbol: "ITC.NS", tag: "India \xB7 FMCG" },
-      { symbol: "HINDUNILVR.NS", tag: "India \xB7 FMCG" },
-      { symbol: "LT.NS", tag: "India \xB7 Infra" },
-      { symbol: "BHARTIARTL.NS", tag: "India \xB7 Telecom" },
-      { symbol: "SBIN.NS", tag: "India \xB7 Bank" },
-      { symbol: "AAPL", tag: "US \xB7 Tech" },
-      { symbol: "MSFT", tag: "US \xB7 Tech" },
-      { symbol: "GOOGL", tag: "US \xB7 Tech" },
-      { symbol: "AMZN", tag: "US \xB7 Retail" },
-      { symbol: "NVDA", tag: "US \xB7 Semis" },
-      { symbol: "JNJ", tag: "US \xB7 Pharma" },
-      { symbol: "KO", tag: "US \xB7 Beverages" },
-      { symbol: "JPM", tag: "US \xB7 Bank" },
-      { symbol: "V", tag: "US \xB7 Payments" },
-      { symbol: "PG", tag: "US \xB7 FMCG" }
+      { symbol: "RELIANCE.NS", tag: "India \xB7 Energy", sector: "Energy" },
+      { symbol: "ONGC.NS", tag: "India \xB7 Energy", sector: "Energy" },
+      { symbol: "TCS.NS", tag: "India \xB7 IT", sector: "Technology" },
+      { symbol: "INFY.NS", tag: "India \xB7 IT", sector: "Technology" },
+      { symbol: "WIPRO.NS", tag: "India \xB7 IT", sector: "Technology" },
+      { symbol: "HDFCBANK.NS", tag: "India \xB7 Bank", sector: "Banking" },
+      { symbol: "ICICIBANK.NS", tag: "India \xB7 Bank", sector: "Banking" },
+      { symbol: "SBIN.NS", tag: "India \xB7 Bank", sector: "Banking" },
+      { symbol: "ITC.NS", tag: "India \xB7 FMCG", sector: "FMCG" },
+      { symbol: "HINDUNILVR.NS", tag: "India \xB7 FMCG", sector: "FMCG" },
+      { symbol: "LT.NS", tag: "India \xB7 Infra", sector: "Industrials" },
+      { symbol: "BHARTIARTL.NS", tag: "India \xB7 Telecom", sector: "Telecom" },
+      { symbol: "MARUTI.NS", tag: "India \xB7 Auto", sector: "Auto" },
+      { symbol: "TATAMOTORS.NS", tag: "India \xB7 Auto", sector: "Auto" },
+      { symbol: "SUNPHARMA.NS", tag: "India \xB7 Pharma", sector: "Pharma" },
+      { symbol: "DRREDDY.NS", tag: "India \xB7 Pharma", sector: "Pharma" },
+      { symbol: "TATASTEEL.NS", tag: "India \xB7 Metals", sector: "Metals" },
+      { symbol: "NTPC.NS", tag: "India \xB7 Power", sector: "Power" },
+      { symbol: "POWERGRID.NS", tag: "India \xB7 Power", sector: "Power" },
+      { symbol: "AAPL", tag: "US \xB7 Tech", sector: "Technology" },
+      { symbol: "MSFT", tag: "US \xB7 Tech", sector: "Technology" },
+      { symbol: "GOOGL", tag: "US \xB7 Tech", sector: "Technology" },
+      { symbol: "AMZN", tag: "US \xB7 Retail", sector: "Retail" },
+      { symbol: "NVDA", tag: "US \xB7 Semis", sector: "Technology" },
+      { symbol: "JNJ", tag: "US \xB7 Pharma", sector: "Pharma" },
+      { symbol: "KO", tag: "US \xB7 Beverages", sector: "FMCG" },
+      { symbol: "JPM", tag: "US \xB7 Bank", sector: "Banking" },
+      { symbol: "V", tag: "US \xB7 Payments", sector: "Technology" },
+      { symbol: "PG", tag: "US \xB7 FMCG", sector: "FMCG" },
+      { symbol: "XOM", tag: "US \xB7 Energy", sector: "Energy" },
+      { symbol: "CVX", tag: "US \xB7 Energy", sector: "Energy" }
     ];
+    var RANGE_MAP = {
+      "1D": { range: "1d", interval: "5m" },
+      "5D": { range: "5d", interval: "15m" },
+      "1M": { range: "1mo", interval: "60m" },
+      "6M": { range: "6mo", interval: "1d" },
+      "1Y": { range: "1y", interval: "1d" },
+      "5Y": { range: "5y", interval: "1wk" }
+    };
+    async function history(symbol, rangeKey = "1D") {
+      const cfg = RANGE_MAP[rangeKey] || RANGE_MAP["1D"];
+      let lastErr;
+      for (const host of HOSTS) {
+        try {
+          const j = await getJSON(
+            `${host}/v8/finance/chart/${encodeURIComponent(symbol)}?range=${cfg.range}&interval=${cfg.interval}&includePrePost=false`,
+            { timeout: 12e3 }
+          );
+          const r = j.chart && j.chart.result && j.chart.result[0];
+          if (!r || !r.meta) continue;
+          const ts = r.timestamp || [];
+          const closes = (r.indicators.quote[0] || {}).close || [];
+          const points = ts.map((t, i) => ({ t: t * 1e3, c: closes[i] })).filter((p) => typeof p.c === "number" && isFinite(p.c));
+          if (!points.length) continue;
+          return {
+            symbol: r.meta.symbol,
+            name: r.meta.longName || r.meta.shortName || symbol,
+            currency: r.meta.currency || "USD",
+            range: rangeKey,
+            points
+          };
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      throw lastErr || new Error(`no history for ${symbol}`);
+    }
     function annualVolatility(series) {
       if (!series || series.length < 20) return null;
       const rets = [];
@@ -376,6 +423,7 @@ var require_stocks = __commonJS({
         return {
           ...c,
           tag: p.tag,
+          sector: p.sector,
           yearPct: first ? (c.price - first) / first * 100 : null,
           volatility: vol,
           // Below ~25% annualised is the practical dividing line between steady and jumpy.
@@ -474,6 +522,7 @@ var require_stocks = __commonJS({
       search,
       priceAt,
       popular,
+      history,
       INDICES,
       UNIVERSE_US,
       UNIVERSE_IN,
@@ -943,7 +992,7 @@ var require_crypto = __commonJS({
 var require_weather = __commonJS({
   "src/services/weather.js"(exports, module) {
     "use strict";
-    var { getJSON, cachedJSON, settled } = require_http();
+    var { getJSON, cachedJSON, pool, settled } = require_http();
     var CODES = {
       0: ["Clear sky", "\u2600\uFE0F"],
       1: ["Mainly clear", "\u{1F324}\uFE0F"],
@@ -1047,7 +1096,32 @@ var require_weather = __commonJS({
         }))
       };
     }
-    module.exports = { today, locate };
+    var FIN_CITIES = [
+      { key: "MUM", name: "Mumbai", flag: "\u{1F1EE}\u{1F1F3}", lat: 19.076, lon: 72.8777 },
+      { key: "NYC", name: "New York", flag: "\u{1F1FA}\u{1F1F8}", lat: 40.7128, lon: -74.006 },
+      { key: "LON", name: "London", flag: "\u{1F1EC}\u{1F1E7}", lat: 51.5072, lon: -0.1276 },
+      { key: "TOK", name: "Tokyo", flag: "\u{1F1EF}\u{1F1F5}", lat: 35.6762, lon: 139.6503 },
+      { key: "HKG", name: "Hong Kong", flag: "\u{1F1ED}\u{1F1F0}", lat: 22.3193, lon: 114.1694 },
+      { key: "FRA", name: "Frankfurt", flag: "\u{1F1E9}\u{1F1EA}", lat: 50.1109, lon: 8.6821 }
+    ];
+    async function financial() {
+      return pool(FIN_CITIES, 6, async (c) => {
+        try {
+          const w = await cachedJSON(
+            `wx:fin:${c.key}`,
+            `https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&current=temperature_2m,weather_code,is_day&timezone=auto`,
+            20 * 60 * 1e3,
+            { timeout: 1e4 }
+          );
+          const cur = w.current || {};
+          const [desc, icon] = CODES[cur.weather_code] || ["\u2014", "\u{1F321}\uFE0F"];
+          return { key: c.key, name: c.name, flag: c.flag, tempC: cur.temperature_2m, desc, icon, isDay: cur.is_day === 1 };
+        } catch {
+          return { key: c.key, name: c.name, flag: c.flag, tempC: null, desc: "\u2014", icon: "\u{1F321}\uFE0F", isDay: true };
+        }
+      });
+    }
+    module.exports = { today, locate, financial, FIN_CITIES };
   }
 });
 
@@ -1082,6 +1156,7 @@ var require_market = __commonJS({
         const always = s.name === "CRYPTO";
         const isOpen = always || !weekend && minutes >= openM && minutes < closeM;
         const mins = always ? 0 : isOpen ? closeM - minutes : minutes < openM ? openM - minutes : 24 * 60 - minutes + openM;
+        const left = `${Math.floor(mins / 60)}h ${mins % 60}m`;
         return {
           name: s.name,
           flag: s.flag,
@@ -1090,7 +1165,8 @@ var require_market = __commonJS({
           always,
           weekend,
           inMinutes: mins,
-          countdown: always ? "24\xD77" : `${Math.floor(mins / 60)}h ${mins % 60}m ${isOpen ? "to close" : "to open"}`
+          status: always ? "Open 24\xD77" : isOpen ? "Open now" : "Closed",
+          countdown: always ? "24\xD77" : isOpen ? `closes in ${left}` : `opens in ${left}`
         };
       });
     }
@@ -1125,12 +1201,69 @@ var require_market = __commonJS({
   }
 });
 
+// src/services/mutualfunds.js
+var require_mutualfunds = __commonJS({
+  "src/services/mutualfunds.js"(exports, module) {
+    "use strict";
+    var { cachedJSON, pool, settled } = require_http();
+    var MFAPI = "https://api.mfapi.in/mf";
+    var CURATED = [
+      { code: 122639, label: "Parag Parikh Flexi Cap", category: "Flexi Cap" },
+      { code: 119598, label: "SBI Large Cap", category: "Large Cap" },
+      { code: 120465, label: "Axis Large Cap", category: "Large Cap" },
+      { code: 118825, label: "Mirae Asset Large Cap", category: "Large Cap" },
+      { code: 120586, label: "ICICI Pru Large Cap", category: "Large Cap" },
+      { code: 119018, label: "HDFC Large Cap", category: "Large Cap" },
+      { code: 118989, label: "HDFC Mid Cap", category: "Mid Cap" },
+      { code: 119775, label: "Kotak Midcap", category: "Mid Cap" },
+      { code: 118778, label: "Nippon India Small Cap", category: "Small Cap" },
+      { code: 120828, label: "Quant Small Cap", category: "Small Cap" },
+      { code: 125354, label: "Axis Small Cap", category: "Small Cap" },
+      { code: 120716, label: "UTI Nifty 50 Index", category: "Index" },
+      { code: 118968, label: "HDFC Balanced Advantage", category: "Hybrid" },
+      { code: 120692, label: "ICICI Pru Corporate Bond", category: "Debt" }
+    ];
+    function changeOver(data, stepsBack) {
+      const now = data[0];
+      const then = data[stepsBack] || data[data.length - 1];
+      if (!now || !then) return null;
+      const a = parseFloat(now.nav);
+      const b = parseFloat(then.nav);
+      if (!isFinite(a) || !isFinite(b) || b === 0) return null;
+      return (a - b) / b * 100;
+    }
+    async function oneFund(entry) {
+      const detail = await cachedJSON(`mf:nav:${entry.code}`, `${MFAPI}/${entry.code}`, 6 * 3600 * 1e3, { timeout: 12e3 });
+      const data = detail && detail.data;
+      if (!data || !data.length) return null;
+      return {
+        schemeCode: entry.code,
+        name: entry.label,
+        fullName: detail.meta && detail.meta.scheme_name || entry.label,
+        fundHouse: detail.meta && detail.meta.fund_house,
+        category: entry.category,
+        nav: parseFloat(data[0].nav),
+        navDate: data[0].date,
+        dayChangePct: changeOver(data, 1),
+        monthChangePct: changeOver(data, 21),
+        yearChangePct: changeOver(data, 252)
+      };
+    }
+    async function popular() {
+      const rows = await pool(CURATED, 4, (e) => settled(oneFund(e)));
+      return rows.filter(Boolean);
+    }
+    module.exports = { popular, CURATED };
+  }
+});
+
 // worker/src/index.js
 var import_stocks = __toESM(require_stocks());
 var import_news = __toESM(require_news());
 var import_crypto = __toESM(require_crypto());
 var import_weather = __toESM(require_weather());
 var import_market = __toESM(require_market());
+var import_mutualfunds = __toESM(require_mutualfunds());
 var CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
@@ -1248,7 +1381,7 @@ async function route(request, env, ctx) {
       return json({
         name: "PulseDesk API",
         author: "Dheerav Tandon",
-        endpoints: ["/api/indices", "/api/news", "/api/hyped", "/api/popular", "/api/crypto", "/api/sessions", "/api/weather", "/api/quotes", "/api/fx", "/api/lookup", "/api/search", "/api/price-at", "/api/ping", "/api/stats", "/api/health"]
+        endpoints: ["/api/indices", "/api/news", "/api/hyped", "/api/popular", "/api/funds", "/api/crypto", "/api/sessions", "/api/weather", "/api/cities", "/api/quotes", "/api/fx", "/api/lookup", "/api/search", "/api/price-at", "/api/history", "/api/ping", "/api/stats", "/api/health"]
       });
     case "/api/indices":
       return cached(request, ctx, 60, () => import_stocks.default.indices());
@@ -1273,6 +1406,8 @@ async function route(request, env, ctx) {
       });
     case "/api/popular":
       return cached(request, ctx, 900, () => import_stocks.default.popular());
+    case "/api/funds":
+      return cached(request, ctx, 1800, () => import_mutualfunds.default.popular());
     case "/api/search": {
       const q = (qp.get("q") || "").trim();
       if (q.length < 1) return json([], 60);
@@ -1284,6 +1419,13 @@ async function route(request, env, ctx) {
       if (!symbol) return fail("symbol required", 400);
       return cached(request, ctx, 600, () => import_stocks.default.priceAt(symbol, isFinite(ts) ? ts : Date.now()));
     }
+    case "/api/history": {
+      const symbol = (qp.get("symbol") || "").trim();
+      const range = (qp.get("range") || "1D").trim();
+      if (!symbol) return fail("symbol required", 400);
+      const ttl = range === "1D" ? 60 : range === "5D" ? 300 : 1800;
+      return cached(request, ctx, ttl, () => import_stocks.default.history(symbol, range));
+    }
     case "/api/sessions": {
       const sessions = import_market.default.sessions();
       return json({ sessions }, 30);
@@ -1294,6 +1436,8 @@ async function route(request, env, ctx) {
       const coarse = lat != null && lon != null ? { lat: Math.round(lat * 10) / 10, lon: Math.round(lon * 10) / 10 } : {};
       return cached(request, ctx, 1800, () => import_weather.default.today(coarse));
     }
+    case "/api/cities":
+      return cached(request, ctx, 1200, () => import_weather.default.financial());
     case "/api/quotes": {
       const symbols = (qp.get("symbols") || "").split(",").map((s) => s.trim()).filter(Boolean).slice(0, 40);
       if (!symbols.length) return json({});
