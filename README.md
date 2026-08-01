@@ -4,6 +4,8 @@
 >
 > 📱 **Use it now:** <https://dheeravtandon.github.io/pulsedesk/> — open on your phone and tap *Add to Home Screen*
 > 💻 **Windows app:** <https://github.com/dheeravtandon/pulsedesk/releases/latest>
+> 🧭 **New here?** [INSTALL.md](INSTALL.md) — installing on phone and PC, step by step
+> 🚀 **Publishing it?** [HOW-TO-PUBLISH.md](HOW-TO-PUBLISH.md) — click-by-click, no terminal needed
 
 **Document ID:** PD-HB-001 · **Version:** 1.0 · **Date:** 2026-08-01 · **Prepared by:** Dheerav Tandon
 **Status:** Living · **Classification:** Internal
@@ -103,8 +105,9 @@ npm run build
 | Move / resize | Drag the title bar; drag any window edge |
 | Always on top, opacity, click-through, all-desktops | Tray right-click menu, or the ⚙ settings panel |
 | Compact mode | ▤ button — two columns, hides the allocation donut |
-| Add a holding | **+ Add** → symbol (`RELIANCE.NS`, `AAPL`, `BTC-USD`), quantity, average price |
-| Base currency | Dropdown in the portfolio header (INR/USD/EUR/GBP/AED) |
+| Full screen | **⛶** button or **F11** |
+| Add a holding | **+ Add holding** → type a company name → pick when you bought → price fills itself in |
+| Base currency | **₹ INR / $ USD** toggle, or the dropdown for EUR/GBP/AED/JPY |
 
 Data lives in `%APPDATA%\pulse-desk\` — `portfolio.json`, `history.json`, `settings.json`. Tray → *Open data folder* jumps there.
 
@@ -145,6 +148,8 @@ Full zero-cost setup — Cloudflare, GitHub Pages, Releases and the stats key �
 | 9 | DPDP Compliance Tracker | `docs/PD_DPDP_Compliance_Tracker_v1.0.xlsx` | *lawfulness* |
 | 10 | Data Retention Policy | `docs/PD_Data_Retention_Policy_v1.0.docx` | *how long* |
 | + | Distribution runbook | `DEPLOY.md` | *how it reaches people, for ₹0* |
+| + | Publishing guide (no terminal) | `HOW-TO-PUBLISH.md` | *the same, by clicking* |
+| + | End-user install guide | `INSTALL.md` | *how people get it* |
 
 Chain: Charter → RTM → SDD → PMP → Risk Register. RTM rows carry a Design Ref into SDD sections; SDD sections list the Req IDs they satisfy; Code Register rows carry both. Regenerate the binary documents with `node tools/gen-docs.js`.
 
