@@ -64,7 +64,17 @@ const RTM_FUNCTIONAL = [
   ['FUN-050', 'Crypto', 'Offer a most-bought view ranked by 24-hour turnover alongside the 5-hour pump view', 'Crypto watcher', 'M', 'FUN', 'Charter §3.4', 'SDD §4.6', 'TC-F-050', '—', 'Verified'],
   ['FUN-051', 'Shell', 'Provide a full-screen control in the title bar and on F11', 'Investor', 'M', 'FUN', 'Charter §3.7', 'SDD §3.2', 'TC-F-051', '—', 'Verified'],
   ['FUN-052', 'Distribution', 'Ship the worker as one pasteable file so publishing needs no command line', 'Owner', 'M', 'FUN', 'Charter §3.12', 'SDD §10.6', 'TC-F-052', '—', 'Verified'],
-  ['FUN-053', 'Distribution', 'Provide double-click launchers and a click-by-click publishing guide for a non-technical operator', 'Owner', 'M', 'FUN', 'Charter §3.12', 'SDD §10.6', 'TC-F-053', '—', 'Verified']
+  ['FUN-053', 'Distribution', 'Provide double-click launchers and a click-by-click publishing guide for a non-technical operator', 'Owner', 'M', 'FUN', 'Charter §3.12', 'SDD §10.6', 'TC-F-053', '—', 'Verified'],
+  ['FUN-054', 'Portfolio', 'Let the user enter either a share quantity or a money amount invested, computing the other from the buy price automatically', 'Investor', 'M', 'FUN', 'Charter §3.2', 'SDD §4.10', 'TC-F-054', '—', 'Verified'],
+  ['FUN-055', 'Mutual Funds', 'Show NAV plus 1-day, 1-month and 1-year change for a curated set of popular direct-growth schemes across categories', 'Investor', 'M', 'FUN', 'Charter §3.13', 'SDD §4.12', 'TC-F-055', '—', 'Verified'],
+  ['FUN-056', 'Mutual Funds', 'Filter the fund list by category — Flexi Cap, Large/Mid/Small Cap, Index, Hybrid, Debt', 'Investor', 'S', 'FUN', 'Charter §3.13', 'SDD §4.12', 'TC-F-056', '—', 'Verified'],
+  ['FUN-057', 'Hype Radar', 'Let the user expand beyond the top 5 into a ranked list of every stock the scorer scanned', 'Investor', 'S', 'FUN', 'Charter §3.1', 'SDD §4.2', 'TC-F-057', '—', 'Verified'],
+  ['FUN-058', 'Stock Detail', 'Show a price history chart for any listed stock across 1D, 5D, 1M, 6M, 1Y and 5Y ranges', 'Investor', 'M', 'FUN', 'Charter §3.14', 'SDD §4.13', 'TC-F-058', '—', 'Verified'],
+  ['FUN-059', 'Stock Detail', 'Show the most recent related headlines when adding a holding or opening a stock chart', 'Investor', 'S', 'FUN', 'Charter §3.14', 'SDD §4.13', 'TC-F-059', '—', 'Verified'],
+  ['FUN-060', 'Popular', 'Filter the popular & steady list by sector', 'Investor', 'S', 'FUN', 'Charter §3.11', 'SDD §4.11', 'TC-F-060', '—', 'Verified'],
+  ['FUN-061', 'Predictions', 'Carry a plain-English "likely to rise/fall/stay flat" momentum read on hype rows, the all-scanned list and news items', 'Investor', 'S', 'FUN', 'Charter §3.1, §3.3', 'SDD §4.2, §4.4', 'TC-F-061', '—', 'Verified'],
+  ['FUN-062', 'Weather', 'Show live conditions for six major financial-hub cities alongside the user own local weather', 'Investor', 'M', 'FUN', 'Charter §3.6', 'SDD §4.8', 'TC-F-062', '—', 'Verified'],
+  ['FUN-063', 'Markets', 'State plainly whether each exchange is open now or closed, with a closes-in / opens-in countdown', 'Desk operator', 'S', 'FUN', 'Charter §3.5', 'SDD §4.7', 'TC-F-063', '—', 'Verified']
 ];
 
 const RTM_SECURITY = [
@@ -82,7 +92,8 @@ const RTM_SECURITY = [
   ['SEC-012', 'Analytics', 'No IP address, cookie, email or account is stored — only a random client-generated id, coarse country and platform', 'Public user', 'M', 'SEC', 'DPDP Act 2023', 'SDD §11.1', 'TC-S-012', 'DPDP §4, §8', 'Developed'],
   ['SEC-013', 'Worker', 'The worker holds no upstream credentials and accepts only its documented routes', 'System', 'M', 'SEC', 'OWASP A05', 'SDD §10.1', 'TC-S-013', 'CERT-In', 'Developed'],
   ['SEC-014', 'Worker', 'Visitor identifiers are sanitised and length-capped before they reach the database', 'System', 'S', 'SEC', 'OWASP A03', 'SDD §11.1', 'TC-S-014', '—', 'Developed'],
-  ['SEC-015', 'Distribution', 'The web build declares a content security policy that allows connections only to its own origin and the configured worker', 'Public user', 'M', 'SEC', 'OWASP A05', 'SDD §10.2', 'TC-S-015', '—', 'Verified']
+  ['SEC-015', 'Distribution', 'The web build declares a content security policy that allows connections only to its own origin and the configured worker', 'Public user', 'M', 'SEC', 'OWASP A05', 'SDD §10.2', 'TC-S-015', '—', 'Verified'],
+  ['SEC-016', 'Services', 'Mutual fund lookups call only the documented mfapi.in NAV endpoint by a pinned, hardcoded scheme code — no user input is interpolated into the URL', 'System', 'M', 'SEC', 'OWASP A01', 'SDD §4.12', 'TC-S-016', '—', 'Verified']
 ];
 
 const RTM_NFR = [
@@ -98,34 +109,36 @@ const RTM_NFR = [
   ['NFR-010', 'Services', 'Every primary data source has a documented fallback path', 'System', 'S', 'NFR', 'Charter §4', 'SDD §2.3', 'TC-N-010', '—', 'Verified'],
   ['NFR-011', 'Worker', 'Edge caching holds worker traffic inside the free allowance at ten thousand daily users', 'Owner', 'M', 'NFR', 'Charter §2', 'SDD §10.1', 'TC-N-011', '—', 'Developed'],
   ['NFR-012', 'Distribution', 'The phone layout fits a 375 px viewport with no horizontal scrolling and safe-area padding', 'Public user', 'M', 'NFR', 'Charter §3.8', 'SDD §10.2', 'TC-N-012', 'GIGW 3.0', 'Verified'],
-  ['NFR-013', 'Distribution', 'Hosting, delivery and analytics stay at zero recurring cost', 'Owner', 'M', 'NFR', 'Charter §2', 'SDD §10.5', 'TC-N-013', '—', 'Verified']
+  ['NFR-013', 'Distribution', 'Hosting, delivery and analytics stay at zero recurring cost', 'Owner', 'M', 'NFR', 'Charter §2', 'SDD §10.5', 'TC-N-013', '—', 'Verified'],
+  ['NFR-014', 'Renderer', 'Every predictive or "likely" call is paired with a visible not-investment-advice disclaimer', 'Investor', 'M', 'NFR', 'Charter §4', 'SDD §5.4', 'TC-N-014', '—', 'Verified']
 ];
 
 const CODE_REGISTER = [
   ['package.json', 'Config', 'Manifest, scripts and electron-builder packaging targets', '—', '—', 'NFR-005, NFR-009', 'SDD §2.2', 'Done'],
-  ['main.js', 'Main process', 'Window lifecycle, tray, global shortcuts, IPC surface, tiered refresh orchestration', 'IPC: data:*, portfolio:*, settings:*, win:*', 'settings.json', 'FUN-025..FUN-029, SEC-004, SEC-005', 'SDD §3', 'Done'],
-  ['preload.js', 'Bridge', 'contextBridge API exposed to the renderer as window.pulse', 'IPC allowlist', '—', 'SEC-001', 'SDD §6.1', 'Done'],
+  ['main.js', 'Main process', 'Window lifecycle, tray, global shortcuts, IPC surface (incl. search:history), tiered refresh orchestration including funds and financial-hub cities', 'IPC: data:*, portfolio:*, settings:*, win:*, search:*', 'settings.json', 'FUN-025..FUN-029, FUN-055, FUN-058, FUN-062, SEC-004, SEC-005', 'SDD §3', 'Done'],
+  ['preload.js', 'Bridge', 'contextBridge API exposed to the renderer as window.pulse, including history()', 'IPC allowlist', '—', 'SEC-001', 'SDD §6.1', 'Done'],
   ['src/services/http.js', 'Service', 'fetch wrapper with abort timeout, TTL cache with stale fallback, bounded-concurrency pool', '—', '—', 'NFR-003, NFR-004, SEC-009', 'SDD §3.7', 'Done'],
-  ['src/services/stocks.js', 'Service', 'Yahoo chart normalisation, Stooq fallback, index basket, FX cross, hype scoring', '—', '—', 'FUN-001..FUN-003, FUN-008, FUN-020, NFR-010', 'SDD §4.1, §4.2', 'Done'],
+  ['src/services/stocks.js', 'Service', 'Yahoo chart normalisation, Stooq fallback, index basket, FX cross, hype scoring, sector-tagged popular list, 1D-5Y history series', '—', '—', 'FUN-001..FUN-003, FUN-008, FUN-020, FUN-058, FUN-060, NFR-010', 'SDD §4.1, §4.2, §4.11, §4.13', 'Done'],
   ['src/services/sentiment.js', 'Service', 'Market-headline lexicon with negation, hedging and percentage weighting', '—', '—', 'FUN-013', 'SDD §4.4', 'Done'],
   ['src/services/news.js', 'Service', 'RSS/Atom fetch and parse, entity repair, de-duplication, ticker extraction, ranking', '—', '—', 'FUN-012, FUN-014, SEC-003', 'SDD §4.3', 'Done'],
   ['src/services/crypto.js', 'Service', 'Binance 5-hour rolling-window ranking, CoinGecko fallback, Fear & Greed, global stats', '—', '—', 'FUN-017..FUN-019, NFR-010', 'SDD §4.6', 'Done'],
-  ['src/services/weather.js', 'Service', 'IP geolocation chain, Open-Meteo forecast, air quality, weather-code mapping', '—', '—', 'FUN-023, FUN-024', 'SDD §4.8', 'Done'],
+  ['src/services/weather.js', 'Service', 'IP geolocation chain, Open-Meteo forecast, air quality, weather-code mapping, six-city financial-hub snapshot', '—', '—', 'FUN-023, FUN-024, FUN-062', 'SDD §4.8', 'Done'],
   ['src/services/portfolio.js', 'Service', 'JSON store, weighted-average merge, valuation, realised/unrealised P&L, daily snapshots', '—', 'portfolio.json, history.json', 'FUN-004..FUN-011, SEC-007', 'SDD §4.5', 'Done'],
-  ['src/services/market.js', 'Service', 'Exchange session clocks, breadth calculation, composite pulse score', '—', '—', 'FUN-021, FUN-022', 'SDD §4.7', 'Done'],
+  ['src/services/market.js', 'Service', 'Exchange session clocks with open-now/closes-in wording, breadth calculation, composite pulse score', '—', '—', 'FUN-021, FUN-022, FUN-063', 'SDD §4.7', 'Done'],
+  ['src/services/mutualfunds.js', 'Service', 'Curated Direct-Growth mutual fund NAVs from mfapi.in by pinned scheme code, with day/month/year change', '—', '—', 'FUN-055, FUN-056, SEC-016', 'SDD §4.12', 'Done'],
   ['src/services/icon.js', 'Service', 'Dependency-free RGBA PNG encoder used for the tray and window icon', '—', '—', 'FUN-026', 'SDD §3.3', 'Done'],
-  ['src/renderer/index.html', 'Renderer', 'Dashboard markup, CSP declaration, modal shells', '—', '—', 'SEC-002, NFR-006', 'SDD §5.1', 'Done'],
-  ['src/renderer/styles.css', 'Renderer', 'Glass finance theme, fixed-height card grid, responsive and compact layouts', '—', '—', 'FUN-031, NFR-006, NFR-007', 'SDD §5.2', 'Done'],
-  ['src/renderer/app.js', 'Renderer', 'Formatting helpers, SVG sparkline/donut builders, section renderers, event wiring', '—', '—', 'FUN-009, FUN-015, FUN-030, SEC-003', 'SDD §5.3', 'Done'],
+  ['src/renderer/index.html', 'Renderer', 'Dashboard markup, CSP declaration, modal shells including the stock chart and all-scanned-stocks modals', '—', '—', 'SEC-002, NFR-006, FUN-057, FUN-058', 'SDD §5.1', 'Done'],
+  ['src/renderer/styles.css', 'Renderer', 'Glass finance theme, fixed-height card grid, chart/modal styling, responsive, compact and mobile-touch layouts', '—', '—', 'FUN-031, NFR-006, NFR-007, NFR-012', 'SDD §5.2', 'Done'],
+  ['src/renderer/app.js', 'Renderer', 'Formatting helpers, SVG sparkline/donut/chart builders, likely-call heuristic, related-news matcher, section renderers, event wiring', '—', '—', 'FUN-009, FUN-015, FUN-030, FUN-054, FUN-057..FUN-061, SEC-003', 'SDD §5.3', 'Done'],
   ['tools/preview-server.js', 'Tooling', 'Localhost static server for renderer iteration outside Electron', 'http://localhost:5173', '—', 'SEC-010', 'SDD §7.2', 'Done'],
   ['tools/docs/content.js', 'Tooling', 'Content tables backing the generated document set', '—', '—', '—', 'SDD §7.3', 'Done'],
   ['tools/gen-docs.js', 'Tooling', 'Generates the docx and xlsx documents from content.js', '—', '—', '—', 'SDD §7.3', 'Done'],
   ['.claude/launch.json', 'Config', 'Preview server launch configuration', 'localhost:5173, localhost:5174', '—', '—', 'SDD §7.2', 'Done'],
   ['README.md', 'Docs', 'Project handbook and document index', '—', '—', '—', 'SDD §1', 'Done'],
-  ['worker/src/index.js', 'Worker', 'CORS market-data relay plus the anonymous usage counter and private stats endpoint', '/api/indices, /api/news, /api/hyped, /api/crypto, /api/sessions, /api/weather, /api/quotes, /api/fx, /api/lookup, /api/ping, /api/stats, /api/health', 'D1: events', 'FUN-034, FUN-036, FUN-037, SEC-011..SEC-014, NFR-011', 'SDD §10.1, §11', 'Done'],
+  ['worker/src/index.js', 'Worker', 'CORS market-data relay plus the anonymous usage counter and private stats endpoint', '/api/indices, /api/news, /api/hyped, /api/popular, /api/funds, /api/crypto, /api/sessions, /api/weather, /api/cities, /api/quotes, /api/fx, /api/lookup, /api/search, /api/price-at, /api/history, /api/ping, /api/stats, /api/health', 'D1: events', 'FUN-034, FUN-036, FUN-037, FUN-055, FUN-058, FUN-062, SEC-011..SEC-014, SEC-016, NFR-011', 'SDD §10.1, §11', 'Done'],
   ['worker/wrangler.toml', 'Config', 'Cloudflare Worker and D1 binding configuration', '—', 'D1: pulsedesk', 'NFR-013', 'SDD §10.1', 'Done'],
   ['worker/schema.sql', 'Worker', 'Events table and indexes for the usage counter', '—', 'D1: events', 'FUN-036, SEC-012', 'SDD §11.1', 'Done'],
-  ['web/src/web-bridge.js', 'Web', 'Browser implementation of window.pulse — fetch instead of IPC, localStorage instead of files', '—', 'localStorage: pulse.*', 'FUN-034, FUN-035, FUN-036', 'SDD §10.2', 'Done'],
+  ['web/src/web-bridge.js', 'Web', 'Browser implementation of window.pulse — fetch instead of IPC, localStorage instead of files, including funds/cities/history', '—', 'localStorage: pulse.*', 'FUN-034, FUN-035, FUN-036, FUN-055, FUN-058, FUN-062', 'SDD §10.2', 'Done'],
   ['web/src/install.js', 'Web', 'Install prompt for Android/desktop and the Add to Home Screen hint for iOS', '—', '—', 'FUN-032', 'SDD §10.3', 'Done'],
   ['web/src/sw.js', 'Web', 'Service worker — shell precache, network-only for market data', '—', 'CacheStorage', 'FUN-033', 'SDD §10.3', 'Done'],
   ['web/src/web.css', 'Web', 'Web and phone overrides on top of the shared stylesheet', '—', '—', 'NFR-012', 'SDD §10.2', 'Done'],
