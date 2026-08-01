@@ -235,15 +235,17 @@
   async function refreshMedium() {
     const s = read(LS.settings, DEFAULT_SETTINGS);
     const held = ((payload.portfolio && payload.portfolio.rows) || []).map((r) => r.symbol).join(',');
-    const [feed, hyped, popular] = await Promise.all([
+    const [feed, hyped, popular, funds] = await Promise.all([
       guard('news', () => api('/api/news')),
       guard('hyped', () => api(`/api/hyped?market=${s.hyperMarket || 'both'}${held ? `&symbols=${encodeURIComponent(held)}` : ''}`)),
-      guard('popular', () => api('/api/popular'))
+      guard('popular', () => api('/api/popular')),
+      guard('funds', () => api('/api/funds'))
     ]);
     emit({
       news: feed || payload.news || { items: [], counts: {} },
       hyped: hyped || payload.hyped || [],
       popular: popular || payload.popular || [],
+      funds: funds || payload.funds || [],
       meta: meta()
     });
   }
@@ -252,8 +254,11 @@
     const s = read(LS.settings, DEFAULT_SETTINGS);
     const has = (v) => v != null && v !== '' && isFinite(Number(v));
     const qs = has(s.weather && s.weather.lat) && has(s.weather && s.weather.lon) ? `?lat=${s.weather.lat}&lon=${s.weather.lon}` : '';
-    const w = await guard('weather', () => api(`/api/weather${qs}`));
-    emit({ weather: w || payload.weather || null, meta: meta() });
+    const [w, cities] = await Promise.all([
+      guard('weather', () => api(`/api/weather${qs}`)),
+      guard('cities', () => api('/api/cities'))
+    ]);
+    emit({ weather: w || payload.weather || null, cities: cities || payload.cities || [], meta: meta() });
   }
 
   const refreshAll = () => Promise.all([refreshFast(), refreshMedium(), refreshSlow()]);
@@ -378,7 +383,9 @@
     lookup: async (symbol) => api(`/api/lookup?symbol=${encodeURIComponent(symbol)}`).catch((e) => ({ error: e.message })),
     search: async (query) => api(`/api/search?q=${encodeURIComponent(query)}`).catch(() => []),
     priceAt: async (symbol, ts) =>
-      api(`/api/price-at?symbol=${encodeURIComponent(symbol)}&ts=${Math.round(Number(ts) / 60000) * 60000}`).catch((e) => ({ error: e.message }))
+      api(`/api/price-at?symbol=${encodeURIComponent(symbol)}&ts=${Math.round(Number(ts) / 60000) * 60000}`).catch((e) => ({ error: e.message })),
+    history: async (symbol, range) =>
+      api(`/api/history?symbol=${encodeURIComponent(symbol)}&range=${encodeURIComponent(range)}`).catch((e) => ({ error: e.message }))
   };
 
   /* --------------------------------- start --------------------------------- */
