@@ -15,7 +15,7 @@
 
 ## What it is
 
-A frameless, always-on-top Electron widget that keeps one screen of live market context permanently in view: the five most-hyped stocks, your portfolio P&L, fifteen market headlines each carrying a rise/fall call, the ten hardest-pumping crypto pairs of the last five hours, market clocks, and today's weather.
+A frameless, always-on-top Electron widget that keeps one screen of live market context permanently in view: the five most-hyped stocks (with a show-all view of everything scanned), your portfolio P&L, fifteen market headlines each carrying a rise/fall call, the ten hardest-pumping crypto pairs of the last five hours, popular & steady large caps by sector, popular Indian mutual fund NAVs, a price chart for any listed stock, market clocks for six financial hubs, and today's weather.
 
 ## Why it exists
 
@@ -69,16 +69,20 @@ Retail traders juggle a broker app, two news sites, a crypto exchange tab and a 
 | Crypto | Binance `ticker/24hr` + `ticker?windowSize=5h` | Exact 5-hour pump ranking |
 | Crypto fallback | CoinGecko `coins/markets` | 1h/24h movers when Binance is unreachable |
 | Sentiment index | alternative.me Fear & Greed | Crypto risk appetite |
-| Weather | Open-Meteo forecast + air-quality | Temperature, rain, UV, AQI |
+| Weather | Open-Meteo forecast + air-quality | Temperature, rain, UV, AQI, plus six financial-hub cities |
 | Geolocation | ipapi.co → ipwho.is → New Delhi | Weather coordinates |
+| Mutual funds | mfapi.in (AMFI NAV data) | Direct-growth scheme NAV and day/month/year change |
 
 ## How the numbers are derived
 
 - **Hype score (0–100)** — `0.45 × volume-vs-20-day-average + 0.35 × |day move| + 0.20 × news mentions`, each min-max normalised across the candidate set. Universe = Yahoo trending ∪ curated US/India liquid names ∪ your holdings ∪ tickers named in today's headlines.
 - **News direction** — a market-specific lexicon (`sentiment.js`) with negation handling, hedge damping and percentage-magnitude weighting. Output is `RISE` / `FALL` / `FLAT` plus a confidence percentage. It is a headline-tone classifier, not a price forecast.
 - **Crypto pump** — Binance rolling-window ticker with `windowSize=5h`, restricted to USDT pairs above $3 M of 24 h quote volume, leveraged and stablecoin pairs excluded.
-- **Portfolio** — per-holding `invested = qty × avg price`, `value = qty × live price`, both converted to your base currency at the live FX cross. Day P&L uses previous close. Realised P&L is booked when a holding is removed with a sell price.
-- **Market pulse** — blends advance/decline ratio, average move, VIX band, news skew and Fear & Greed into a −100…+100 mood score.
+- **Portfolio** — per-holding `invested = qty × avg price`, `value = qty × live price`, both converted to your base currency at the live FX cross. Day P&L uses previous close. Realised P&L is booked when a holding is removed with a sell price. Quantity can be entered directly or derived from a money amount (`qty = amount ÷ price`).
+- **Market pulse** — blends advance/decline ratio, average move, VIX band, news skew and Fear & Greed into a −100…+100 mood score. Each exchange also states plainly whether it's open now or closed, with a closes-in / opens-in countdown.
+- **Mutual funds** — fourteen well-known direct-growth schemes pinned by their permanent AMFI scheme code (several were renamed by their AMC over the years, so name search alone isn't reliable); NAV history is fetched once and cached, and day/month/year change is derived from the dated NAV series.
+- **Stock detail chart** — click any listed stock for a 1D/5D/1M/6M/1Y/5Y price chart plus the most recent related headlines, matched from the already-fetched news wire by ticker or company name.
+- **"Likely" calls** — hype rows and the all-scanned list carry a plain-English momentum read (e.g. "Likely to keep rising") from day-move plus volume ratio; every predictive card ends with a not-investment-advice line.
 
 ## Run it
 
@@ -106,7 +110,10 @@ npm run build
 | Always on top, opacity, click-through, all-desktops | Tray right-click menu, or the ⚙ settings panel |
 | Compact mode | ▤ button — two columns, hides the allocation donut |
 | Full screen | **⛶** button or **F11** |
-| Add a holding | **+ Add holding** → type a company name → pick when you bought → price fills itself in |
+| Add a holding | **+ Add holding** → type a company name → pick when you bought → price fills itself in → recent headlines on that company show automatically |
+| Buy by amount instead of shares | **By amount invested** toggle in the add-holding dialog — enter money, quantity is derived from the price |
+| See a stock's price history | Click any stock row (hype, popular, a holding) → 1D/5D/1M/6M/1Y/5Y chart with recent news |
+| Filter popular stocks by sector, funds by category | Dropdowns in the **Popular & Steady** and **Mutual Funds** card headers |
 | Base currency | **₹ INR / $ USD** toggle, or the dropdown for EUR/GBP/AED/JPY |
 
 Data lives in `%APPDATA%\pulse-desk\` — `portfolio.json`, `history.json`, `settings.json`. Tray → *Open data folder* jumps there.
