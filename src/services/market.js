@@ -25,6 +25,7 @@ function sessions(now = new Date()) {
     const always = s.name === 'CRYPTO';
     const isOpen = always || (!weekend && minutes >= openM && minutes < closeM);
     const mins = always ? 0 : isOpen ? closeM - minutes : minutes < openM ? openM - minutes : 24 * 60 - minutes + openM;
+    const left = `${Math.floor(mins / 60)}h ${mins % 60}m`;
     return {
       name: s.name,
       flag: s.flag,
@@ -33,7 +34,8 @@ function sessions(now = new Date()) {
       always,
       weekend,
       inMinutes: mins,
-      countdown: always ? '24×7' : `${Math.floor(mins / 60)}h ${mins % 60}m ${isOpen ? 'to close' : 'to open'}`
+      status: always ? 'Open 24×7' : isOpen ? 'Open now' : 'Closed',
+      countdown: always ? '24×7' : isOpen ? `closes in ${left}` : `opens in ${left}`
     };
   });
 }
