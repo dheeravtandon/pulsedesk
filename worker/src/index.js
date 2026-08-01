@@ -12,6 +12,7 @@ import news from '../../src/services/news.js';
 import crypto from '../../src/services/crypto.js';
 import weather from '../../src/services/weather.js';
 import market from '../../src/services/market.js';
+import mutualfunds from '../../src/services/mutualfunds.js';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -162,7 +163,7 @@ async function route(request, env, ctx) {
       return json({
         name: 'PulseDesk API',
         author: 'Dheerav Tandon',
-        endpoints: ['/api/indices', '/api/news', '/api/hyped', '/api/popular', '/api/crypto', '/api/sessions', '/api/weather', '/api/quotes', '/api/fx', '/api/lookup', '/api/search', '/api/price-at', '/api/ping', '/api/stats', '/api/health']
+        endpoints: ['/api/indices', '/api/news', '/api/hyped', '/api/popular', '/api/funds', '/api/crypto', '/api/sessions', '/api/weather', '/api/cities', '/api/quotes', '/api/fx', '/api/lookup', '/api/search', '/api/price-at', '/api/history', '/api/ping', '/api/stats', '/api/health']
       });
 
     case '/api/indices':
@@ -193,6 +194,9 @@ async function route(request, env, ctx) {
     case '/api/popular':
       return cached(request, ctx, 900, () => stocks.popular());
 
+    case '/api/funds':
+      return cached(request, ctx, 1800, () => mutualfunds.popular());
+
     case '/api/search': {
       const q = (qp.get('q') || '').trim();
       if (q.length < 1) return json([], 60);
@@ -207,6 +211,14 @@ async function route(request, env, ctx) {
       return cached(request, ctx, 600, () => stocks.priceAt(symbol, isFinite(ts) ? ts : Date.now()));
     }
 
+    case '/api/history': {
+      const symbol = (qp.get('symbol') || '').trim();
+      const range = (qp.get('range') || '1D').trim();
+      if (!symbol) return fail('symbol required', 400);
+      const ttl = range === '1D' ? 60 : range === '5D' ? 300 : 1800;
+      return cached(request, ctx, ttl, () => stocks.history(symbol, range));
+    }
+
     case '/api/sessions': {
       const sessions = market.sessions();
       return json({ sessions }, 30);
@@ -219,6 +231,9 @@ async function route(request, env, ctx) {
       const coarse = lat != null && lon != null ? { lat: Math.round(lat * 10) / 10, lon: Math.round(lon * 10) / 10 } : {};
       return cached(request, ctx, 1800, () => weather.today(coarse));
     }
+
+    case '/api/cities':
+      return cached(request, ctx, 1200, () => weather.financial());
 
     case '/api/quotes': {
       const symbols = (qp.get('symbols') || '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 40);
