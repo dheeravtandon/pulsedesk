@@ -353,7 +353,11 @@ async function charter() {
     H('3.9 Anonymous usage measurement', HeadingLevel.HEADING_2),
     P('The owner needs to know how many devices are using the app and how many times it is opened each day, without introducing a login and without collecting anything that identifies a person. Counts are surfaced on a private dashboard protected by a shared key. Satisfies FUN-036, FUN-037, SEC-011, SEC-012 and SEC-014.'),
     H('3.10 Attribution', HeadingLevel.HEADING_2),
-    P('A subtle, permanent credit to the author appears in the status bar, the tray menu, the web manifest and the packaged application metadata. Satisfies FUN-039.'),
+    P('A subtle, permanent credit to the author appears in the title bar, the status bar, the tray menu, the web manifest and the packaged application metadata. Satisfies FUN-039.'),
+    H('3.11 Popular and steady names', HeadingLevel.HEADING_2),
+    P('Alongside the hype radar, which by design surfaces whatever is moving violently today, the dashboard carries a second list of widely-held large caps ordered by how calm they have been over a year. Volatility is measured, not asserted, and translated into plain English. Satisfies FUN-048 and FUN-049.'),
+    H('3.12 Operable without a command line', HeadingLevel.HEADING_2),
+    P('The owner is not a developer by trade. Running the app, building the worker file and publishing the whole thing must be possible through double-clicked launchers and website buttons alone. Satisfies FUN-052 and FUN-053.'),
 
     H('4. Non-functional targets', HeadingLevel.HEADING_1),
     P('Cold start under three seconds; market data never older than sixty seconds while visible; a failing feed degrades that panel only and never blanks the dashboard; outbound calls pooled at eight concurrent requests to stay inside free rate limits; legible from 1240 px down to 620 px with no horizontal scrolling. Detailed in NFR-001 to NFR-010.'),
@@ -494,6 +498,13 @@ async function sdd() {
     H('4.8 Weather', HeadingLevel.HEADING_2),
     P('Coordinates come from settings when the user has set them, otherwise from an IP lookup with a second provider and a fixed default behind it. Forecast and air-quality calls return current conditions, an eight-hour outlook, daily extremes, UV, sunrise and sunset, and a US AQI band. Manual coordinates keep the location entirely off the network. Satisfies FUN-023, FUN-024 and mitigates RSK-009.'),
 
+    H('4.9 Symbol search', HeadingLevel.HEADING_2),
+    P('The add-holding dialog queries Yahoo\'s symbol directory as the user types, so a person can enter "reliance" or "tata" rather than knowing that the ticker is RELIANCE.NS. Results keep equities, ETFs, indices, funds, currencies and crypto, are sorted to put Indian listings first, and are cached for five minutes. Keyboard navigation is supported so the dialog is usable without a mouse. Satisfies FUN-040.'),
+    H('4.10 Price at a chosen moment', HeadingLevel.HEADING_2),
+    P('A purchase is either "right now", which uses the live quote, or an exact past date and time. For a past moment the service requests a window around that timestamp at the finest interval the provider still serves for that age — fifteen minutes inside two months, then hourly, then daily, then weekly — and picks the closest candle. Markets are shut most of the time, so the window widens step by step until a real trade exists, and the dialog says whether it found the exact moment or the nearest trading time. The dialog then shows the amount invested and, for past purchases, the gain or loss against the live price before anything is saved. The auto-filled price is always editable and is relabelled as the user\'s own figure once touched. Satisfies FUN-041 to FUN-044.'),
+    H('4.11 Popular and steady', HeadingLevel.HEADING_2),
+    P('A fixed list of twenty widely-held Indian and US large caps is fetched as a year of daily candles. Annualised volatility is computed from log returns and banded into very steady, steady, moves a lot and volatile; the list is ordered calmest first and shows the one-year return beside it. This is deliberately the opposite selection to the hype radar, and the card states in plain text that it is not advice. Satisfies FUN-048 and FUN-049.'),
+
     H('5. Renderer', HeadingLevel.HEADING_1),
     H('5.1 Structure', HeadingLevel.HEADING_2),
     P('One page, a draggable title bar, a scrolling index tape, a card grid and a status bar, plus two modal dialogs for adding a holding and for settings. The content security policy is declared in the document head and permits scripts and styles from the page origin only. Satisfies SEC-002.'),
@@ -542,6 +553,9 @@ async function sdd() {
     P('One workflow builds the web bundle and publishes it to GitHub Pages on every push that touches the renderer or the web sources. A second workflow runs on a version tag, packages the Windows installer and portable executable on a Windows runner, and attaches them to the GitHub release. Icons for packaging are generated at build time from the same PNG encoder used for the tray, so no binary asset is committed. Satisfies FUN-038.'),
     H('10.5 Cost model', HeadingLevel.HEADING_2),
     P('GitHub Pages, GitHub Releases, GitHub Actions on a public repository, Cloudflare Workers and Cloudflare D1 all operate inside permanently free tiers at the scale this application generates. There is no paid dependency anywhere in the delivery chain; the deliberate exclusions — app store listings and code signing — are recorded with their costs in PD-DEP-001. Satisfies NFR-013.'),
+
+    H('10.6 Operating without a command line', HeadingLevel.HEADING_2),
+    P('The worker is also emitted as a single bundled file, which can be pasted directly into the Cloudflare dashboard editor; combined with GitHub Desktop, the GitHub Pages settings page and the Releases page, the entire publish path becomes website buttons. Two double-click batch launchers cover running the app and regenerating the pasteable worker file, each checking for Node and explaining in plain language what to do if it is missing. HOW-TO-PUBLISH.md and INSTALL.md carry the click-by-click instructions for the operator and for end users respectively. Satisfies FUN-052 and FUN-053.'),
 
     H('11. Usage measurement', HeadingLevel.HEADING_1),
     H('11.1 Counting without accounts', HeadingLevel.HEADING_2),

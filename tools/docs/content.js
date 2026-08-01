@@ -50,7 +50,21 @@ const RTM_FUNCTIONAL = [
   ['FUN-036', 'Analytics', 'Count app opens, distinct devices per day and devices active in the last five minutes without any login', 'Owner', 'M', 'FUN', 'Charter §3.9', 'SDD §11.1', 'TC-F-036', 'DPDP §4', 'Developed'],
   ['FUN-037', 'Analytics', 'Present those counts on a private dashboard gated by a shared key, with a 30-day trend, country and platform split', 'Owner', 'S', 'FUN', 'Charter §3.9', 'SDD §11.2', 'TC-F-037', '—', 'Developed'],
   ['FUN-038', 'Distribution', 'Publish the Windows installer and portable build automatically from a version tag', 'Owner', 'S', 'FUN', 'Charter §3.8', 'SDD §10.4', 'TC-F-038', '—', 'Developed'],
-  ['FUN-039', 'Distribution', 'Show a subtle author credit in the status bar, tray menu, manifest and packaged metadata', 'Owner', 'S', 'FUN', 'Charter §3.10', 'SDD §5.1', 'TC-F-039', '—', 'Verified']
+  ['FUN-039', 'Distribution', 'Show a subtle author credit in the status bar, title bar, tray menu, manifest and packaged metadata', 'Owner', 'S', 'FUN', 'Charter §3.10', 'SDD §5.1', 'TC-F-039', '—', 'Verified'],
+  ['FUN-040', 'Portfolio', 'Offer a type-ahead list of matching companies and tickers as the user types a name', 'Investor', 'M', 'FUN', 'Charter §3.2', 'SDD §4.9', 'TC-F-040', '—', 'Verified'],
+  ['FUN-041', 'Portfolio', 'Let the user say the purchase was "right now" or pick an exact past date and time', 'Investor', 'M', 'FUN', 'Charter §3.2', 'SDD §4.10', 'TC-F-041', '—', 'Verified'],
+  ['FUN-042', 'Portfolio', 'Fill the buy price automatically from the market price at the chosen moment, widening to the nearest trading time when markets were shut', 'Investor', 'M', 'FUN', 'Charter §3.2', 'SDD §4.10', 'TC-F-042', '—', 'Verified'],
+  ['FUN-043', 'Portfolio', 'Preview invested amount and the gain or loss against the live price before the holding is saved', 'Investor', 'S', 'FUN', 'Charter §3.2', 'SDD §4.10', 'TC-F-043', '—', 'Verified'],
+  ['FUN-044', 'Portfolio', 'Allow the auto-filled price to be overridden and label it as the user’s own figure', 'Investor', 'S', 'FUN', 'Charter §3.2', 'SDD §4.10', 'TC-F-044', '—', 'Verified'],
+  ['FUN-045', 'Portfolio', 'Record the purchase timestamp and show holding age and since-date on each row', 'Investor', 'S', 'FUN', 'Charter §3.2', 'SDD §4.5', 'TC-F-045', '—', 'Verified'],
+  ['FUN-046', 'Portfolio', 'Offer a one-click INR/USD switch beside the full base-currency list', 'Investor', 'M', 'FUN', 'Charter §3.2', 'SDD §5.3', 'TC-F-046', '—', 'Verified'],
+  ['FUN-047', 'Portfolio', 'Place the portfolio first on the dashboard, across the full width', 'Investor', 'M', 'FUN', 'Charter §3.2', 'SDD §5.2', 'TC-F-047', '—', 'Verified'],
+  ['FUN-048', 'Popular', 'List widely-held large caps ranked by 1-year annualised volatility, with a plain-English steadiness band and 1-year return', 'Investor', 'M', 'FUN', 'Charter §3.11', 'SDD §4.11', 'TC-F-048', '—', 'Verified'],
+  ['FUN-049', 'Popular', 'Filter that list by India or US and add any row straight into the portfolio', 'Investor', 'S', 'FUN', 'Charter §3.11', 'SDD §4.11', 'TC-F-049', '—', 'Verified'],
+  ['FUN-050', 'Crypto', 'Offer a most-bought view ranked by 24-hour turnover alongside the 5-hour pump view', 'Crypto watcher', 'M', 'FUN', 'Charter §3.4', 'SDD §4.6', 'TC-F-050', '—', 'Verified'],
+  ['FUN-051', 'Shell', 'Provide a full-screen control in the title bar and on F11', 'Investor', 'M', 'FUN', 'Charter §3.7', 'SDD §3.2', 'TC-F-051', '—', 'Verified'],
+  ['FUN-052', 'Distribution', 'Ship the worker as one pasteable file so publishing needs no command line', 'Owner', 'M', 'FUN', 'Charter §3.12', 'SDD §10.6', 'TC-F-052', '—', 'Verified'],
+  ['FUN-053', 'Distribution', 'Provide double-click launchers and a click-by-click publishing guide for a non-technical operator', 'Owner', 'M', 'FUN', 'Charter §3.12', 'SDD §10.6', 'TC-F-053', '—', 'Verified']
 ];
 
 const RTM_SECURITY = [
@@ -121,7 +135,13 @@ const CODE_REGISTER = [
   ['tools/gen-icons.js', 'Tooling', 'Writes packaging icons from the runtime PNG encoder', '—', '—', 'FUN-038', 'SDD §10.4', 'Done'],
   ['.github/workflows/pages.yml', 'CI', 'Builds and deploys the web app to GitHub Pages on push', '—', '—', 'FUN-032, NFR-013', 'SDD §10.4', 'Done'],
   ['.github/workflows/release.yml', 'CI', 'Builds the Windows installer and portable exe on a version tag and attaches them to the release', '—', '—', 'FUN-038', 'SDD §10.4', 'Done'],
-  ['DEPLOY.md', 'Docs', 'Zero-cost distribution runbook for Pages, Releases, Cloudflare and the usage dashboard', '—', '—', 'NFR-013', 'SDD §10.5', 'Done']
+  ['DEPLOY.md', 'Docs', 'Zero-cost distribution runbook for Pages, Releases, Cloudflare and the usage dashboard', '—', '—', 'NFR-013', 'SDD §10.5', 'Done'],
+  ['HOW-TO-PUBLISH.md', 'Docs', 'Click-by-click publishing guide with no command line, for a non-technical operator', '—', '—', 'FUN-053', 'SDD §10.6', 'Done'],
+  ['INSTALL.md', 'Docs', 'End-user installation guide for phone, PC and browser, plus the holdings walkthrough', '—', '—', 'FUN-053', 'SDD §10.6', 'Done'],
+  ['tools/bundle-worker.js', 'Tooling', 'esbuild bundle of the worker into a single pasteable file', '—', '—', 'FUN-052', 'SDD §10.6', 'Done'],
+  ['worker/dist/worker.js', 'Worker', 'Generated single-file worker for dashboard paste-deployment', '—', '—', 'FUN-052', 'SDD §10.6', 'Done'],
+  ['run-pulsedesk.bat', 'Tooling', 'Double-click launcher that installs dependencies on first run and starts the app', '—', '—', 'FUN-053', 'SDD §10.6', 'Done'],
+  ['make-worker-file.bat', 'Tooling', 'Double-click builder for the pasteable worker file', '—', '—', 'FUN-052, FUN-053', 'SDD §10.6', 'Done']
 ];
 
 const RISKS = [
