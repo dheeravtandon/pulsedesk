@@ -5,9 +5,12 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.join(__dirname, '..', 'src', 'renderer');
+const ROOT = path.resolve(__dirname, '..', process.env.PREVIEW_ROOT || 'src/renderer');
 const PORT = Number(process.env.PORT) || 5173;
-const TYPES = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json' };
+const TYPES = {
+  '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json',
+  '.webmanifest': 'application/manifest+json', '.png': 'image/png', '.svg': 'image/svg+xml'
+};
 
 http
   .createServer((req, res) => {

@@ -6,6 +6,13 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["tools/preview-server.js"],
       "port": 5173
+    },
+    {
+      "name": "web-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/preview-server.js"],
+      "env": { "PREVIEW_ROOT": "web/dist", "PORT": "5174" },
+      "port": 5174
     }
   ]
 }
