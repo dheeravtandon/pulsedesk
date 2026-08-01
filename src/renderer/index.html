@@ -85,9 +85,13 @@
       <section class="card span-4 h-sm" id="cardHype">
         <div class="card-head">
           <h2>🔥 Hype Radar <span class="sub">top 5 most-hyped stocks</span></h2>
-          <span class="badge live" id="hypeMeta">—</span>
+          <div class="head-actions">
+            <span class="badge live" id="hypeMeta">—</span>
+            <button class="mini ghost" id="btnHypeMore">Show all</button>
+          </div>
         </div>
         <div class="hype-grid" id="hypeGrid"></div>
+        <div class="disclaim">🔥 Hype ranks attention (volume + move + headlines), not direction. "Likely" calls are momentum reads. <b>Not investment advice.</b></div>
       </section>
 
       <!-- NEWS -->
@@ -102,6 +106,7 @@
         </div>
         <div class="news-bar" id="newsBar"></div>
         <div class="news-list" id="newsList"></div>
+        <div class="disclaim">Direction calls read headline tone, not the future. <b>Not investment advice.</b></div>
       </section>
 
       <!-- CRYPTO -->
@@ -122,21 +127,51 @@
         <div class="card-head">
           <h2>⭐ Popular &amp; Steady <span class="sub">big names, ranked by how calm they are</span></h2>
           <div class="head-actions">
+            <select id="popSector" class="mini-select" title="Filter by sector"><option value="ALL">All sectors</option></select>
             <button class="chip-btn active" data-pop="ALL">All</button>
             <button class="chip-btn" data-pop="IN">🇮🇳 India</button>
             <button class="chip-btn" data-pop="US">🇺🇸 US</button>
           </div>
         </div>
         <div class="pop-list" id="popList"></div>
-        <div class="crypto-foot">Steadiness = 1-year annualised volatility. Lower means the price swings less. <b>Not advice.</b></div>
+        <div class="disclaim">Steadiness = 1-year annualised volatility. Lower means the price swings less. <b>Not advice.</b></div>
       </section>
 
-      <!-- WEATHER + SESSIONS -->
-      <section class="card span-2 h-lg" id="cardSide">
-        <div class="card-head"><h2>🌤️ Today <span class="sub" id="wxCity">—</span></h2></div>
-        <div class="wx" id="wx"></div>
-        <div class="card-head sub-head"><h2>⏱ Market Clocks</h2></div>
-        <div class="sessions" id="sessions"></div>
+      <!-- MUTUAL FUNDS -->
+      <section class="card span-2 h-lg" id="cardFunds">
+        <div class="card-head">
+          <h2>🏦 Mutual Funds <span class="sub">popular direct-growth schemes</span></h2>
+          <div class="head-actions">
+            <select id="fundFilter" class="mini-select" title="Filter by category">
+              <option value="ALL">All categories</option>
+              <option value="Flexi Cap">Flexi Cap</option>
+              <option value="Large Cap">Large Cap</option>
+              <option value="Mid Cap">Mid Cap</option>
+              <option value="Small Cap">Small Cap</option>
+              <option value="Index">Index</option>
+              <option value="Hybrid">Hybrid</option>
+              <option value="Debt">Debt</option>
+            </select>
+          </div>
+        </div>
+        <div class="fund-list" id="fundList"></div>
+        <div class="disclaim">NAV updates once a day after markets close. <b>Not investment advice.</b></div>
+      </section>
+
+      <!-- WEATHER + MARKETS -->
+      <section class="card span-4 h-lg" id="cardSide">
+        <div class="card-head"><h2>🌍 Weather &amp; Markets <span class="sub" id="wxCity">—</span></h2></div>
+        <div class="wx-body">
+          <div class="wx-col">
+            <div class="wx" id="wx"></div>
+            <div class="col-label">Financial hubs</div>
+            <div class="fin-cities" id="finCities"></div>
+          </div>
+          <div class="wx-col">
+            <div class="col-label">Market clocks</div>
+            <div class="sessions" id="sessions"></div>
+          </div>
+        </div>
       </section>
     </main>
 
@@ -158,6 +193,7 @@
       </label>
       <div class="suggest" id="suggest" hidden></div>
       <div class="picked" id="picked" hidden></div>
+      <div class="pick-news" id="pickNews" hidden></div>
 
       <label>When did you buy it?</label>
       <div class="seg wide-seg" id="whenToggle">
@@ -168,8 +204,12 @@
         <input id="fWhen" type="datetime-local" />
       </label>
 
+      <div class="seg wide-seg" id="qtyMode">
+        <button type="button" data-mode="qty" class="active">By quantity</button>
+        <button type="button" data-mode="amount">By amount invested</button>
+      </div>
       <div class="row2">
-        <label>Quantity <input id="fQty" type="number" step="any" min="0" placeholder="10" /></label>
+        <label id="qtyLabelWrap">Quantity <input id="fQty" type="number" step="any" min="0" placeholder="10" /></label>
         <label>Buy price <span class="auto-tag" id="priceTag">auto</span>
           <input id="fAvg" type="number" step="any" min="0" placeholder="fetched automatically" />
         </label>
@@ -207,6 +247,46 @@
         <button class="mini solid" id="btnSaveSet">Apply</button>
       </div>
       <p class="tip">Created by <b>Dheerav Tandon</b> · free to use · your holdings never leave this device.</p>
+    </div>
+  </div>
+
+  <!-- stock detail chart -->
+  <div class="modal-backdrop" id="modalChart" hidden>
+    <div class="modal wide">
+      <div class="chart-head">
+        <div>
+          <h3 id="chSym">—</h3>
+          <div class="chart-sub" id="chSub">—</div>
+        </div>
+        <button class="tb" id="btnCloseChart" title="Close">✕</button>
+      </div>
+      <div class="chart-price" id="chPrice">—</div>
+      <div class="chart-box"><svg id="chSvg" viewBox="0 0 600 220" preserveAspectRatio="none"></svg></div>
+      <div class="seg wide-seg" id="chRange">
+        <button type="button" data-r="1D" class="active">1D</button>
+        <button type="button" data-r="5D">5D</button>
+        <button type="button" data-r="1M">1M</button>
+        <button type="button" data-r="6M">6M</button>
+        <button type="button" data-r="1Y">1Y</button>
+        <button type="button" data-r="5Y">5Y</button>
+      </div>
+      <div class="col-label">Recent news</div>
+      <div class="pick-news" id="chNews"></div>
+      <div class="modal-actions">
+        <button class="mini ghost" id="btnCloseChart2">Close</button>
+        <button class="mini solid" id="btnAddFromChart">+ Add to portfolio</button>
+      </div>
+      <p class="tip">Chart and calls are pattern reads on past prices — not a forecast, not financial advice.</p>
+    </div>
+  </div>
+
+  <!-- all scanned stocks -->
+  <div class="modal-backdrop" id="modalHypeAll" hidden>
+    <div class="modal wide">
+      <h3>All scanned stocks <span class="sub" id="hypeAllCount"></span></h3>
+      <div class="hype-all-list" id="hypeAllList"></div>
+      <div class="disclaim">Hype ranks attention, not direction. "Likely" calls read momentum + volume — not financial advice.</div>
+      <div class="modal-actions"><button class="mini solid" id="btnCloseHypeAll">Close</button></div>
     </div>
   </div>
 
