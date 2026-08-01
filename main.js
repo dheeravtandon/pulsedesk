@@ -10,6 +10,7 @@ const news = require('./src/services/news');
 const weather = require('./src/services/weather');
 const portfolio = require('./src/services/portfolio');
 const market = require('./src/services/market');
+const mutualfunds = require('./src/services/mutualfunds');
 const { appIcon } = require('./src/services/icon');
 
 const DEFAULT_SETTINGS = {
@@ -182,22 +183,31 @@ async function refreshMedium() {
   const feed = await guard('news', () => news.fetchAll(15));
   const mentions = (feed && feed.mentions) || {};
   const held = ((payload.portfolio && payload.portfolio.rows) || []).map((r) => r.symbol);
-  const [hype, pop] = await Promise.all([
+  const [hype, pop, funds] = await Promise.all([
     guard('hyped', () => stocks.hyped(mentions, held, settings.hyperMarket)),
-    guard('popular', () => stocks.popular())
+    guard('popular', () => stocks.popular()),
+    guard('funds', () => mutualfunds.popular())
   ]);
 
   broadcast({
     news: feed || payload.news || { items: [], counts: {} },
-    hyped: (hype || payload.hyped || []).slice(0, 24),
+    hyped: (hype || payload.hyped || []).slice(0, 40),
     popular: pop || payload.popular || [],
+    funds: funds || payload.funds || [],
     meta: { ...noteErrors(), updatedAt: Date.now() }
   });
 }
 
 async function refreshSlow() {
-  const w = await guard('weather', () => weather.today(settings.weather));
-  broadcast({ weather: w || payload.weather || null, meta: { ...noteErrors(), updatedAt: Date.now() } });
+  const [w, cities] = await Promise.all([
+    guard('weather', () => weather.today(settings.weather)),
+    guard('cities', () => weather.financial())
+  ]);
+  broadcast({
+    weather: w || payload.weather || null,
+    cities: cities || payload.cities || [],
+    meta: { ...noteErrors(), updatedAt: Date.now() }
+  });
 }
 
 function scheduleRefresh() {
@@ -386,6 +396,13 @@ function registerIpc() {
   ipcMain.handle('search:priceAt', async (_e, { symbol, ts }) => {
     try {
       return await stocks.priceAt(symbol, ts);
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+  ipcMain.handle('search:history', async (_e, { symbol, range }) => {
+    try {
+      return await stocks.history(symbol, range);
     } catch (err) {
       return { error: err.message };
     }
