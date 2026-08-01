@@ -6,6 +6,10 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
+    "icons": "node tools/gen-icons.js",
+    "web": "node tools/build-web.js",
+    "docs": "node tools/gen-docs.js",
+    "prebuild": "node tools/gen-icons.js",
     "build": "electron-builder --win nsis portable"
   },
   "keywords": [
@@ -13,9 +17,10 @@
     "portfolio",
     "stocks",
     "crypto",
-    "desktop-widget"
+    "desktop-widget",
+    "pwa"
   ],
-  "author": "TandSol",
+  "author": "Dheerav Tandon",
   "license": "MIT",
   "devDependencies": {
     "docx": "^9.7.1",
@@ -26,6 +31,7 @@
   "build": {
     "appId": "in.tandsol.pulsedesk",
     "productName": "PulseDesk",
+    "copyright": "Created by Dheerav Tandon",
     "files": [
       "main.js",
       "preload.js",
@@ -33,10 +39,20 @@
       "assets/**/*"
     ],
     "win": {
+      "icon": "assets/icon.png",
       "target": [
         "nsis",
         "portable"
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "PulseDesk"
+    },
+    "portable": {
+      "artifactName": "PulseDesk-${version}-portable.exe"
     }
   }
 }
