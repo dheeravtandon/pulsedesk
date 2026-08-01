@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PulseDesk — usage</title>
+<link rel="icon" href="./icon-192.png" />
+<style>
+  :root {
+    --bg:#05060f; --card:rgba(18,21,42,.75); --line:rgba(140,160,255,.16);
+    --txt:#e9edff; --dim:#8f9bc7; --mute:#5d6893; --acc:#7c5cff; --acc2:#21d4fd; --up:#17e29a; --down:#ff4d6d; --gold:#ffc44d;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    font-family:'Segoe UI',Inter,system-ui,sans-serif; color:var(--txt); min-height:100vh; padding:22px;
+    background:
+      radial-gradient(900px 460px at 10% -10%, rgba(124,92,255,.28), transparent 60%),
+      radial-gradient(760px 420px at 100% 6%, rgba(33,212,253,.20), transparent 58%),
+      linear-gradient(165deg,#080a18,#05060f 60%);
+  }
+  header { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:18px; }
+  h1 { font-size:19px; letter-spacing:2px; font-weight:800; }
+  h1 b { background:linear-gradient(90deg,var(--acc2),var(--up)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .sub { font-size:11px; color:var(--mute); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:16px; }
+  .kpi { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; position:relative; overflow:hidden; }
+  .kpi::after { content:''; position:absolute; inset:0 0 auto 0; height:1px; background:linear-gradient(90deg,transparent,var(--acc),var(--acc2),transparent); }
+  .kpi .k { font-size:9px; letter-spacing:1.3px; text-transform:uppercase; color:var(--mute); }
+  .kpi .v { font-size:30px; font-weight:800; letter-spacing:-1px; font-variant-numeric:tabular-nums; margin-top:4px; }
+  .kpi .s { font-size:10px; color:var(--dim); }
+  .live .v { color:var(--up); }
+  .panel { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+  .panel h2 { font-size:11px; letter-spacing:1.2px; text-transform:uppercase; color:var(--dim); margin-bottom:10px; }
+  .bars { display:flex; align-items:flex-end; gap:3px; height:130px; }
+  .bar { flex:1; min-width:4px; background:linear-gradient(180deg,var(--acc2),var(--acc)); border-radius:3px 3px 0 0; position:relative; }
+  .bar:hover::after {
+    content:attr(data-label); position:absolute; bottom:100%; left:50%; transform:translateX(-50%);
+    background:#12162c; border:1px solid var(--line); border-radius:6px; padding:4px 7px; font-size:10px; white-space:nowrap; z-index:2;
+  }
+  .two { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { text-align:left; font-size:9px; letter-spacing:1px; text-transform:uppercase; color:var(--mute); padding-bottom:6px; }
+  td { padding:5px 0; border-top:1px solid rgba(140,160,255,.08); font-variant-numeric:tabular-nums; }
+  td:last-child, th:last-child { text-align:right; }
+  .gate { max-width:380px; margin:14vh auto; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; }
+  .gate input { width:100%; margin:10px 0; padding:10px; border-radius:9px; border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--txt); font-size:13px; }
+  button { cursor:pointer; border:none; border-radius:9px; padding:9px 14px; font-weight:700; font-size:12px; color:#fff; background:linear-gradient(135deg,var(--acc),var(--acc2)); }
+  .ghost { background:rgba(255,255,255,.06); border:1px solid var(--line); color:var(--dim); }
+  footer { margin-top:20px; font-size:10px; color:var(--mute); text-align:center; }
+  .err { color:#ffb37a; font-size:12px; margin-top:8px; }
+  .dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--up); box-shadow:0 0 8px var(--up); margin-right:5px; }
+  @keyframes blip { 50% { opacity:.25 } }
+  .dot { animation:blip 2s ease-in-out infinite; }
+</style>
+</head>
+<body>
+  <div id="gate" class="gate" hidden>
+    <h1>PULSE<b>DESK</b> usage</h1>
+    <p class="sub" style="margin-top:6px">Private dashboard. Paste the stats key you set on the worker.</p>
+    <input id="key" type="password" placeholder="stats key" autocomplete="off" />
+    <button id="go">Open dashboard</button>
+    <div id="gateErr" class="err"></div>
+  </div>
+
+  <div id="app" hidden>
+    <header>
+      <h1>PULSE<b>DESK</b> usage</h1>
+      <span class="sub" id="stamp">loading…</span>
+      <span style="flex:1"></span>
+      <button class="ghost" id="refresh">Refresh</button>
+      <button class="ghost" id="forget">Forget key</button>
+    </header>
+
+    <div class="grid">
+      <div class="kpi live"><div class="k"><span class="dot"></span>Online right now</div><div class="v" id="onlineNow">—</div><div class="s">active in the last 5 minutes</div></div>
+      <div class="kpi"><div class="k">Opens today</div><div class="v" id="todayOpens">—</div><div class="s">app launches since midnight UTC</div></div>
+      <div class="kpi"><div class="k">People today</div><div class="v" id="todayPeople">—</div><div class="s">distinct devices today</div></div>
+      <div class="kpi"><div class="k">People this week</div><div class="v" id="weekPeople">—</div><div class="s">last 7 days</div></div>
+      <div class="kpi"><div class="k">Total people</div><div class="v" id="totalPeople">—</div><div class="s">all time</div></div>
+      <div class="kpi"><div class="k">Total opens</div><div class="v" id="totalOpens">—</div><div class="s">all time</div></div>
+    </div>
+
+    <div class="panel">
+      <h2>Last 30 days — people per day</h2>
+      <div class="bars" id="bars"></div>
+    </div>
+
+    <div class="two">
+      <div class="panel">
+        <h2>Countries</h2>
+        <table><thead><tr><th>Country</th><th>People</th></tr></thead><tbody id="countries"></tbody></table>
+      </div>
+      <div class="panel">
+        <h2>Platforms</h2>
+        <table><thead><tr><th>Platform</th><th>People</th></tr></thead><tbody id="platforms"></tbody></table>
+      </div>
+    </div>
+
+    <footer>No accounts, no emails, no IP addresses stored — only a random id each browser makes for itself. · created by Dheerav Tandon</footer>
+  </div>
+
+  <script src="./config.js"></script>
+  <script>
+    (function () {
+      const API = (window.PULSE_API || '').replace(/\/+$/, '');
+      const $ = (id) => document.getElementById(id);
+      const KEY = 'pulse.statskey';
+      const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const n = (v) => (v == null ? '—' : Number(v).toLocaleString('en-IN'));
+
+      async function load(key) {
+        const res = await fetch(`${API}/api/stats?key=${encodeURIComponent(key)}`);
+        if (res.status === 401) throw new Error('wrong key');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      }
+
+      function paint(d) {
+        ['onlineNow', 'todayOpens', 'todayPeople', 'weekPeople', 'totalPeople', 'totalOpens'].forEach((k) => ($(k).textContent = n(d[k])));
+        $('stamp').textContent = `updated ${new Date(d.generatedAt).toLocaleTimeString()}`;
+
+        const days = d.daily || [];
+        const max = Math.max(1, ...days.map((x) => x.people));
+        $('bars').innerHTML = days
+          .map((x) => `<div class="bar" style="height:${Math.max(3, (x.people / max) * 100)}%" data-label="${esc(x.day)} · ${x.people} people · ${x.opens} opens"></div>`)
+          .join('') || '<span class="sub">no data yet</span>';
+
+        $('countries').innerHTML = (d.countries || []).map((c) => `<tr><td>${esc(c.country)}</td><td>${n(c.people)}</td></tr>`).join('') || '<tr><td colspan="2" class="sub">—</td></tr>';
+        $('platforms').innerHTML = (d.platforms || []).map((c) => `<tr><td>${esc(c.platform)}</td><td>${n(c.people)}</td></tr>`).join('') || '<tr><td colspan="2" class="sub">—</td></tr>';
+      }
+
+      async function start(key) {
+        try {
+          paint(await load(key));
+          localStorage.setItem(KEY, key);
+          $('gate').hidden = true;
+          $('app').hidden = false;
+        } catch (err) {
+          $('gate').hidden = false;
+          $('app').hidden = true;
+          $('gateErr').textContent = `⚠ ${err.message}`;
+        }
+      }
+
+      $('go').addEventListener('click', () => start($('key').value.trim()));
+      $('key').addEventListener('keydown', (e) => e.key === 'Enter' && start($('key').value.trim()));
+      $('refresh').addEventListener('click', () => start(localStorage.getItem(KEY) || ''));
+      $('forget').addEventListener('click', () => {
+        localStorage.removeItem(KEY);
+        location.reload();
+      });
+
+      const saved = localStorage.getItem(KEY);
+      if (saved) start(saved);
+      else $('gate').hidden = false;
+      setInterval(() => {
+        const k = localStorage.getItem(KEY);
+        if (k && !$('app').hidden) start(k);
+      }, 60000);
+    })();
+  </script>
+</body>
+</html>
