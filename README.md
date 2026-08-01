@@ -1,6 +1,11 @@
 # PulseDesk — Always-On Desktop Finance Cockpit
 
-**Document ID:** PD-HB-001 · **Version:** 1.0 · **Date:** 2026-08-01 · **Prepared by:** TandSol
+> **Free · no login · nothing stored on a server.** Created by **Dheerav Tandon**.
+>
+> 📱 **Use it now:** <https://dheeravtandon.github.io/pulsedesk/> — open on your phone and tap *Add to Home Screen*
+> 💻 **Windows app:** <https://github.com/dheeravtandon/pulsedesk/releases/latest>
+
+**Document ID:** PD-HB-001 · **Version:** 1.0 · **Date:** 2026-08-01 · **Prepared by:** Dheerav Tandon
 **Status:** Living · **Classification:** Internal
 **Related:** PD-CHR-001 (Charter), PD-PMP-001 (PMP), PD-RTM-001 (RTM), PD-SDD-001 (Design), PD-CR-001 (Code Register), PD-RSK-001 (Risk), PD-TL-001 (Timeline), PD-DPDP-001 (Compliance), PD-DRP-001 (Retention)
 
@@ -46,6 +51,10 @@ Retail traders juggle a broker app, two news sites, a crypto exchange tab and a 
 | Charts | Hand-rolled inline SVG | No chart library, no CSP exceptions |
 | Storage | JSON files in `app.getPath('userData')` | Local-only, portable, user-inspectable |
 | Packaging | electron-builder (nsis + portable) | Windows installer and no-install exe |
+| Web + mobile | Same renderer + a fetch bridge, shipped as a PWA | One codebase, installable on Android/iOS/desktop, no app store |
+| Data relay | Cloudflare Worker running the same service modules | Browsers can't call the upstreams directly (no CORS); edge cache keeps it free |
+| Usage counter | Cloudflare D1, random client id | Counts devices and opens with no login and no PII |
+| CI/CD | GitHub Actions → Pages + Releases | Free hosting and free Windows builds |
 
 ### Data sources (all free, no API key)
 
@@ -99,6 +108,28 @@ npm run build
 
 Data lives in `%APPDATA%\pulse-desk\` — `portfolio.json`, `history.json`, `settings.json`. Tray → *Open data folder* jumps there.
 
+## Web and mobile
+
+The phone version is the same dashboard. There is no app store and no fee — it installs straight from the browser:
+
+- **Android (Chrome)** — open the link, tap the **Install app** button, done.
+- **iPhone (Safari)** — open the link, **Share → Add to Home Screen**.
+- **Desktop (Chrome/Edge)** — install icon in the address bar.
+
+Build it yourself:
+
+```bash
+npm run web -- --api=https://pulsedesk-api.YOUR-SUBDOMAIN.workers.dev
+```
+
+Holdings entered on the web stay in that browser's local storage — they are never uploaded. The only thing the server ever sees is the list of ticker symbols it needs to price.
+
+### Usage dashboard, without logins
+
+Nobody signs in — not users, not the owner. Each browser makes a random id for itself; the edge worker counts those ids and app opens. **No email, no name, no IP address, no cookie.** The owner's private view (`/stats.html`, unlocked with a shared key) shows devices online now, opens today, distinct devices per day/week/all-time, a 30-day trend and a country/platform split.
+
+Full zero-cost setup — Cloudflare, GitHub Pages, Releases and the stats key — is in **[DEPLOY.md](DEPLOY.md)**.
+
 ## Document index
 
 | # | Document | File | Chain role |
@@ -113,6 +144,7 @@ Data lives in `%APPDATA%\pulse-desk\` — `portfolio.json`, `history.json`, `set
 | 8 | Project Timeline | `docs/PD_Project_Timeline_v1.0.xlsx` | *when* |
 | 9 | DPDP Compliance Tracker | `docs/PD_DPDP_Compliance_Tracker_v1.0.xlsx` | *lawfulness* |
 | 10 | Data Retention Policy | `docs/PD_Data_Retention_Policy_v1.0.docx` | *how long* |
+| + | Distribution runbook | `DEPLOY.md` | *how it reaches people, for ₹0* |
 
 Chain: Charter → RTM → SDD → PMP → Risk Register. RTM rows carry a Design Ref into SDD sections; SDD sections list the Req IDs they satisfy; Code Register rows carry both. Regenerate the binary documents with `node tools/gen-docs.js`.
 
@@ -126,11 +158,12 @@ Working build, verified against live data on 2026-08-01. All ten data services r
 
 ## Next steps
 
-1. Broker import (Zerodha/Groww CSV) so holdings do not need manual entry.
-2. Per-holding sell flow in the UI to book realised P&L (the store already supports it).
-3. Price and P&L alerts via native notifications.
-4. Optional NSE/BSE corporate-action and earnings-calendar strip.
-5. Signed installer for distribution.
+1. Deploy the worker and flip on Pages — see [DEPLOY.md](DEPLOY.md).
+2. Broker import (Zerodha/Groww CSV) so holdings do not need manual entry.
+3. Per-holding sell flow in the UI to book realised P&L (the store already supports it).
+4. Price and P&L alerts via native notifications.
+5. Optional NSE/BSE corporate-action and earnings-calendar strip.
+6. Signed installer to remove the SmartScreen warning (recurring paid cost — deliberately deferred).
 
 ## Glossary
 
@@ -150,4 +183,4 @@ Working build, verified against live data on 2026-08-01. All ten data services r
 
 *PulseDesk shows market data and headline tone for information only. Nothing in it is investment advice; the direction calls are text classification, not forecasts.*
 
-*Maintained by TandSol · Document ID PD-HB-001 · v1.0 · 2026-08-01*
+*Created by Dheerav Tandon · Document ID PD-HB-001 · v1.0 · 2026-08-01 · MIT licensed*
