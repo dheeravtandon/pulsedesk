@@ -6,14 +6,18 @@ const state = {
   newsFilter: 'ALL',
   cryptoTab: 'pumps',
   popFilter: 'ALL',
+  sectorFilter: 'ALL',
+  fundFilter: 'ALL',
   settings: {},
   base: 'INR',
   pick: null,
   priceInfo: null,
   priceManual: false,
   whenMode: 'now',
+  qtyMode: 'qty',
   sugRows: [],
-  sugIndex: -1
+  sugIndex: -1,
+  chartSym: null
 };
 
 /* ---------------- helpers ---------------- */
@@ -93,6 +97,45 @@ function spark(series, color, h = 30, fill = true) {
     <path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
 
+/** Momentum-only "likely" read — not a forecast, just how volume + move are currently leaning. */
+function likelyCall(changePct, strength = 1) {
+  if (!isFinite(changePct)) return { text: 'Not enough data', cls: 'flat' };
+  const s = isFinite(strength) ? strength : 1;
+  if (changePct > 1.5 && s >= 1.3) return { text: 'Likely to keep rising', cls: 'up' };
+  if (changePct < -1.5 && s >= 1.3) return { text: 'Likely to keep falling', cls: 'down' };
+  if (Math.abs(changePct) < 0.4) return { text: 'Likely to stay flat', cls: 'flat' };
+  return changePct > 0 ? { text: 'Leaning higher', cls: 'up' } : { text: 'Leaning lower', cls: 'down' };
+}
+
+/** Headlines already fetched for the News Wire, matched to one symbol by ticker or name. */
+function relatedNews(row) {
+  const items = (state.data.news && state.data.news.items) || [];
+  if (!row || !row.symbol) return [];
+  const sym = row.symbol.toUpperCase();
+  const short = shortSym(sym).toUpperCase();
+  const nameWords = (row.name || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').split(/\s+/).filter((w) => w.length > 3).slice(0, 2);
+  return items
+    .filter((i) => {
+      if ((i.tickers || []).some((t) => t.toUpperCase() === sym || t.toUpperCase() === short)) return true;
+      const title = i.title.toLowerCase();
+      return nameWords.length > 0 && nameWords.every((w) => title.includes(w));
+    })
+    .slice(0, 3);
+}
+
+function newsListHtml(items) {
+  if (!items.length) return '<div class="pn-empty">No recent headlines found for this one.</div>';
+  return items
+    .map((i) => {
+      const k = i.direction === 'RISE' ? 'up' : i.direction === 'FALL' ? 'down' : 'flat';
+      return `<div class="pn-item" data-link="${esc(i.link)}">
+      <span class="pn-dir ${k}">${i.direction === 'RISE' ? '▲' : i.direction === 'FALL' ? '▼' : '■'}</span>
+      <span class="pn-t">${esc(i.title)}</span>
+    </div>`;
+    })
+    .join('');
+}
+
 /* ---------------- renderers ---------------- */
 
 function renderTape(indices) {
@@ -131,7 +174,8 @@ function renderHype(rows) {
     .map((r, i) => {
       const col = r.changePct >= 0 ? '#17e29a' : '#ff4d6d';
       const cur = SYMBOLS[r.currency] || '';
-      return `<div class="hype" data-sym="${esc(r.symbol)}">
+      const call = likelyCall(r.changePct, r.volumeRatio);
+      return `<div class="hype" data-sym="${esc(r.symbol)}" data-name="${esc(r.name || '')}">
         <span class="rank">#${i + 1}</span>
         <div>
           <div class="sym">${esc(shortSym(r.symbol))}</div>
@@ -141,9 +185,30 @@ function renderHype(rows) {
         ${spark(r.series, col)}
         <div class="meter"><i style="width:${Math.max(6, r.hype)}%"></i></div>
         <div class="why">🔥 ${r.hype} · ${esc(r.reason)}</div>
+        <div class="call ${call.cls}">${esc(call.text)}</div>
       </div>`;
     })
     .join('');
+}
+
+function renderHypeAll() {
+  const rows = state.data.hyped || [];
+  $('hypeAllCount').textContent = `(${rows.length} scanned)`;
+  $('hypeAllList').innerHTML = rows.length
+    ? rows
+        .map((r, i) => {
+          const call = likelyCall(r.changePct, r.volumeRatio);
+          const cur = SYMBOLS[r.currency] || '';
+          return `<div class="ha-row" data-sym="${esc(r.symbol)}" data-name="${esc(r.name || '')}">
+        <span class="ha-rank">#${i + 1}</span>
+        <div class="ha-nm"><b>${esc(shortSym(r.symbol))}</b><span>${esc(r.name || '')}</span></div>
+        <span class="ha-px ${cls(r.changePct)}">${cur}${num(r.price, r.price > 1000 ? 0 : 2)} <small>${pctS(r.changePct, 1)}</small></span>
+        <span class="ha-hs">🔥 ${r.hype}</span>
+        <span class="ha-call ${call.cls}">${esc(call.text)}</span>
+      </div>`;
+        })
+        .join('')
+    : '<div class="empty">Scanning the tape…</div>';
 }
 
 function renderPortfolio(pf) {
@@ -209,7 +274,7 @@ function renderPortfolio(pf) {
           const since = r.buyDate
             ? `since ${new Date(r.buyDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}${r.heldDays != null ? ` · ${r.heldDays}d` : ''}`
             : '';
-          return `<div class="hold" data-id="${esc(r.id)}">
+          return `<div class="hold" data-id="${esc(r.id)}" data-sym="${esc(r.symbol)}" data-name="${esc(r.name || '')}">
       <div class="h-l">
         <div class="h-s">${esc(shortSym(r.symbol))} <span class="${cls(r.changePct)}" style="font-size:9px">${pctS(r.changePct, 1)}</span></div>
         <div class="h-q">${num(r.qty, r.qty % 1 ? 4 : 0)} @ ${num(r.avgPrice)} → ${num(r.price)}${r.live ? '' : ' (stale)'}</div>
@@ -268,15 +333,24 @@ function renderPopular(rows) {
     el.innerHTML = '<div class="empty">Loading the steady names…</div>';
     return;
   }
+  const sel = $('popSector');
+  if (sel && sel.options.length <= 1) {
+    const sectors = [...new Set(rows.map((r) => r.sector).filter(Boolean))].sort();
+    sel.innerHTML = '<option value="ALL">All sectors</option>' + sectors.map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  }
   const f = state.popFilter;
-  const list = rows.filter((r) => (f === 'ALL' ? true : f === 'IN' ? /\.(NS|BO)$/.test(r.symbol) : !/\.(NS|BO)$/.test(r.symbol)));
+  const list = rows.filter(
+    (r) =>
+      (f === 'ALL' ? true : f === 'IN' ? /\.(NS|BO)$/.test(r.symbol) : !/\.(NS|BO)$/.test(r.symbol)) &&
+      (state.sectorFilter === 'ALL' || r.sector === state.sectorFilter)
+  );
   const band = (s) => (s === 'very steady' ? 'st-very' : s === 'steady' ? 'st-steady' : s === 'moves a lot' ? 'st-moves' : 'st-vol');
 
   el.innerHTML = list.length
     ? list
         .map((r) => {
           const cur = SYMBOLS[r.currency] || '';
-          return `<div class="pop">
+          return `<div class="pop" data-sym="${esc(r.symbol)}" data-name="${esc(r.name)}">
       <div style="min-width:0">
         <div class="s">${esc(shortSym(r.symbol))} <span class="${cls(r.changePct)}" style="font-size:9px">${pctS(r.changePct, 1)}</span></div>
         <div class="t">${esc(r.tag)} · ${esc(r.name)}</div>
@@ -289,6 +363,46 @@ function renderPopular(rows) {
         })
         .join('')
     : '<div class="empty">Nothing in this filter.</div>';
+}
+
+function renderFunds(rows) {
+  const el = $('fundList');
+  if (!rows || !rows.length) {
+    el.innerHTML = '<div class="empty">Loading fund NAVs…</div>';
+    return;
+  }
+  const f = state.fundFilter;
+  const list = rows.filter((r) => f === 'ALL' || r.category === f);
+  el.innerHTML = list.length
+    ? list
+        .map(
+          (r) => `<div class="fund">
+      <div style="min-width:0">
+        <div class="s">${esc(r.name)}</div>
+        <div class="t">${esc(r.category)} · ${esc(r.fundHouse || '')}</div>
+      </div>
+      <div class="px2">₹${num(r.nav)}<small>NAV</small></div>
+      <div class="yr ${cls(r.dayChangePct)}">${pctS(r.dayChangePct, 2)}<small>1 day</small></div>
+      <div class="yr ${cls(r.yearChangePct)}">${pctS(r.yearChangePct, 0)}<small>1 year</small></div>
+    </div>`
+        )
+        .join('')
+    : '<div class="empty">Nothing in this filter.</div>';
+}
+
+function renderCities(rows) {
+  const el = $('finCities');
+  if (!el) return;
+  el.innerHTML = (rows || [])
+    .map(
+      (c) => `<div class="fc">
+      <span class="fc-f">${esc(c.flag)}</span>
+      <span class="fc-n">${esc(c.name)}</span>
+      <span class="fc-i">${esc(c.icon)}</span>
+      <span class="fc-t">${c.tempC != null ? Math.round(c.tempC) + '°' : '—'}</span>
+    </div>`
+    )
+    .join('');
 }
 
 function renderWeather(w) {
@@ -327,6 +441,7 @@ function renderSessions(m) {
       <span class="st" style="width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:${s.isOpen ? 'var(--up)' : 'var(--down)'};box-shadow:0 0 8px ${s.isOpen ? 'var(--up)' : 'var(--down)'}"></span>
       <span class="nm3">${esc(s.flag)} ${esc(s.name)}</span>
       <span style="color:var(--txt-mute)">${esc(s.clock)}</span>
+      <span class="ses-badge ${s.isOpen ? 'on' : 'off'}">${s.isOpen ? 'OPEN' : 'CLOSED'}</span>
       <span class="cd">${esc(s.countdown)}</span>
     </div>`
     )
@@ -351,6 +466,7 @@ function renderNews(n) {
         .map((i) => {
           const k = i.direction === 'RISE' ? 'rise' : i.direction === 'FALL' ? 'fall' : 'flat';
           const col = k === 'rise' ? 'var(--up)' : k === 'fall' ? 'var(--down)' : 'var(--flat)';
+          const likely = i.direction === 'RISE' ? 'Likely to rise' : i.direction === 'FALL' ? 'Likely to fall' : 'Reads flat';
           return `<div class="nw ${k}" data-link="${esc(i.link)}">
         <div class="dir">
           <span class="a" style="color:${col}">${i.direction === 'RISE' ? '▲' : i.direction === 'FALL' ? '▼' : '■'}</span>
@@ -360,6 +476,7 @@ function renderNews(n) {
         <div>
           <div class="h">${esc(i.title)}</div>
           <div class="m">
+            <span class="likely" style="color:${col}">${esc(likely)}</span>
             <span class="src">${esc(i.source)}</span><span>${esc(ago(i.ts))}</span>
             ${(i.tickers || []).slice(0, 4).map((t) => `<span class="tk">${esc(shortSym(t))}</span>`).join('')}
             ${i.hedged ? '<span>speculative</span>' : ''}
@@ -386,7 +503,9 @@ function render(patch) {
   if (patch.portfolio) renderPortfolio(d.portfolio);
   if (patch.crypto) renderCrypto(d.crypto);
   if (patch.popular) renderPopular(d.popular);
+  if (patch.funds) renderFunds(d.funds);
   if (patch.weather) renderWeather(d.weather);
+  if (patch.cities) renderCities(d.cities);
   if (patch.market) {
     renderSessions(d.market);
     renderPulse(d.market);
@@ -434,6 +553,9 @@ async function pickSymbol(row) {
     <span style="color:var(--txt-mute);font-size:10px">${esc(row.region || row.exchange || '')}</span>
     <button class="clear" id="clearPick" title="Choose a different one">×</button>`;
   $('clearPick').addEventListener('click', resetPick);
+  const news = relatedNews(row);
+  $('pickNews').hidden = false;
+  $('pickNews').innerHTML = `<div class="pn-head">Recent news on ${esc(shortSym(row.symbol))}</div>${newsListHtml(news)}`;
   await fetchBuyPrice();
 }
 
@@ -443,6 +565,8 @@ function resetPick() {
   state.priceManual = false;
   $('picked').hidden = true;
   $('picked').innerHTML = '';
+  $('pickNews').hidden = true;
+  $('pickNews').innerHTML = '';
   $('fAvg').value = '';
   $('fSymbol').value = '';
   $('fSymbol').focus();
@@ -473,16 +597,25 @@ async function fetchBuyPrice() {
   updatePreview();
 }
 
+/** In "by amount" mode the field holds money, not shares — the quantity is derived from the price. */
+function effectiveQty() {
+  const raw = parseFloat($('fQty').value);
+  const price = parseFloat($('fAvg').value);
+  if (!isFinite(raw) || raw <= 0) return NaN;
+  if (state.qtyMode === 'amount') return isFinite(price) && price > 0 ? raw / price : NaN;
+  return raw;
+}
+
 async function updatePreview() {
   const el = $('investPreview');
-  const qty = parseFloat($('fQty').value);
+  const qty = effectiveQty();
   const price = parseFloat($('fAvg').value);
   if (!state.pick) {
     el.innerHTML = '<span class="muted">Pick a company above and the price fills in by itself.</span>';
     return;
   }
   if (!isFinite(qty) || qty <= 0 || !isFinite(price)) {
-    el.innerHTML = `<span class="muted">Enter a quantity to see what this costs.</span>`;
+    el.innerHTML = `<span class="muted">${state.qtyMode === 'amount' ? 'Enter an amount to see how many shares that buys.' : 'Enter a quantity to see what this costs.'}</span>`;
     return;
   }
 
@@ -490,6 +623,10 @@ async function updatePreview() {
   const sym = SYMBOLS[cur] || '';
   const invested = qty * price;
   const when = state.whenMode === 'now' ? 'right now' : state.priceInfo ? dateLabel(state.priceInfo.at) : 'that date';
+  const qtyLine =
+    state.qtyMode === 'amount'
+      ? `<b>${sym}${num(invested)}</b> buys <b>≈${num(qty, 4)}</b> shares of <b>${esc(shortSym(state.pick.symbol))}</b>`
+      : `Buying <b>${num(qty, qty % 1 ? 4 : 0)}</b> of <b>${esc(shortSym(state.pick.symbol))}</b> = <b>${sym}${num(invested)}</b> invested`;
 
   let line2 = '';
   if (state.whenMode === 'past') {
@@ -502,8 +639,21 @@ async function updatePreview() {
     }
   }
 
-  el.innerHTML = `Buying <b>${num(qty, qty % 1 ? 4 : 0)}</b> of <b>${esc(shortSym(state.pick.symbol))}</b>
-    at <b>${sym}${num(price)}</b> (${esc(when)}) = <b>${sym}${num(invested)}</b> invested${line2}`;
+  el.innerHTML = `${qtyLine} at <b>${sym}${num(price)}</b> (${esc(when)})${line2}`;
+}
+
+function setQtyMode(mode) {
+  state.qtyMode = mode;
+  document.querySelectorAll('#qtyMode button').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
+  const label = $('qtyLabelWrap');
+  const input = $('fQty');
+  if (mode === 'amount') {
+    label.firstChild.textContent = 'Amount invested ';
+    input.placeholder = 'e.g. 50000';
+  } else {
+    label.firstChild.textContent = 'Quantity ';
+    input.placeholder = '10';
+  }
 }
 
 function openAdd(prefillSymbol) {
@@ -511,6 +661,7 @@ function openAdd(prefillSymbol) {
   resetPick();
   $('fQty').value = '';
   state.whenMode = 'now';
+  setQtyMode('qty');
   document.querySelectorAll('#whenToggle button').forEach((b) => b.classList.toggle('active', b.dataset.when === 'now'));
   $('whenPickWrap').hidden = true;
   updatePreview();
@@ -536,6 +687,56 @@ function runSearch(q) {
     state.sugIndex = rows && rows.length ? 0 : -1;
     renderSuggestions();
   }, 220);
+}
+
+/* ---------------- stock detail chart ---------------- */
+
+async function openChart(symbol, name) {
+  if (!symbol) return;
+  state.chartSym = symbol;
+  $('modalChart').hidden = false;
+  $('chSym').textContent = shortSym(symbol);
+  $('chSub').textContent = name || '';
+  $('chPrice').textContent = 'loading…';
+  $('chSvg').innerHTML = '';
+  document.querySelectorAll('#chRange button').forEach((b) => b.classList.toggle('active', b.dataset.r === '1D'));
+  const news = relatedNews({ symbol, name });
+  $('chNews').innerHTML = newsListHtml(news);
+  await loadChart('1D');
+}
+
+async function loadChart(range) {
+  const info = await window.pulse.history(state.chartSym, range).catch(() => null);
+  if (!info || info.error || !info.points || !info.points.length) {
+    $('chPrice').innerHTML = '<span class="muted">No chart data for this range.</span>';
+    $('chSvg').innerHTML = '';
+    return;
+  }
+  const pts = info.points;
+  const cur = SYMBOLS[info.currency] || '';
+  const last = pts[pts.length - 1].c;
+  const first = pts[0].c;
+  const chg = first ? ((last - first) / first) * 100 : 0;
+  $('chPrice').innerHTML = `<b>${cur}${num(last, last > 1000 ? 0 : 2)}</b> <span class="${cls(chg)}">${pctS(chg, 2)}</span> <span class="muted">(${esc(range)})</span>`;
+  drawChart(pts, chg >= 0);
+}
+
+function drawChart(pts, up) {
+  const w = 600;
+  const h = 220;
+  const closes = pts.map((p) => p.c);
+  const lo = Math.min(...closes);
+  const hi = Math.max(...closes);
+  const rng = hi - lo || 1;
+  const step = w / (closes.length - 1 || 1);
+  const coords = closes.map((v, i) => [i * step, h - 12 - ((v - lo) / rng) * (h - 24)]);
+  const d = coords.map((c, i) => `${i ? 'L' : 'M'}${c[0].toFixed(1)},${c[1].toFixed(1)}`).join(' ');
+  const color = up ? '#17e29a' : '#ff4d6d';
+  $('chSvg').innerHTML = `<defs><linearGradient id="chg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${color}" stop-opacity="0.35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${d} L${w},${h} L0,${h} Z" fill="url(#chg)"/>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
 }
 
 /* ---------------- events ---------------- */
@@ -581,14 +782,54 @@ function bind() {
     })
   );
 
+  $('popSector').addEventListener('change', (e) => {
+    state.sectorFilter = e.target.value;
+    renderPopular(state.data.popular);
+  });
+  $('fundFilter').addEventListener('change', (e) => {
+    state.fundFilter = e.target.value;
+    renderFunds(state.data.funds);
+  });
+
   $('newsList').addEventListener('click', (e) => {
     const row = e.target.closest('.nw');
     if (row && row.dataset.link) window.pulse.openExternal(row.dataset.link);
   });
 
+  $('hypeGrid').addEventListener('click', (e) => {
+    const row = e.target.closest('.hype');
+    if (row) openChart(row.dataset.sym, row.dataset.name);
+  });
+  $('btnHypeMore').addEventListener('click', () => {
+    renderHypeAll();
+    $('modalHypeAll').hidden = false;
+  });
+  $('btnCloseHypeAll').addEventListener('click', () => ($('modalHypeAll').hidden = true));
+  $('hypeAllList').addEventListener('click', (e) => {
+    const row = e.target.closest('.ha-row');
+    if (row) {
+      $('modalHypeAll').hidden = true;
+      openChart(row.dataset.sym, row.dataset.name);
+    }
+  });
+
   $('popList').addEventListener('click', (e) => {
     const sym = e.target.dataset.add;
-    if (sym) openAdd(sym);
+    if (sym) {
+      openAdd(sym);
+      return;
+    }
+    const row = e.target.closest('.pop');
+    if (row) openChart(row.dataset.sym, row.dataset.name);
+  });
+
+  $('pickNews').addEventListener('click', (e) => {
+    const row = e.target.closest('.pn-item');
+    if (row && row.dataset.link) window.pulse.openExternal(row.dataset.link);
+  });
+  $('chNews').addEventListener('click', (e) => {
+    const row = e.target.closest('.pn-item');
+    if (row && row.dataset.link) window.pulse.openExternal(row.dataset.link);
   });
 
   $('curToggle').addEventListener('click', async (e) => {
@@ -653,15 +894,23 @@ function bind() {
   });
   $('fQty').addEventListener('input', updatePreview);
 
+  $('qtyMode').addEventListener('click', (e) => {
+    const mode = e.target.dataset.mode;
+    if (mode) {
+      setQtyMode(mode);
+      updatePreview();
+    }
+  });
+
   $('btnSaveAdd').addEventListener('click', async () => {
-    const qty = parseFloat($('fQty').value);
+    const qty = effectiveQty();
     const avgPrice = parseFloat($('fAvg').value);
     if (!state.pick) {
       $('investPreview').innerHTML = '<span style="color:var(--down)">⚠ Pick a company from the list first.</span>';
       return;
     }
     if (!isFinite(qty) || qty <= 0 || !isFinite(avgPrice) || avgPrice < 0) {
-      $('investPreview').innerHTML = '<span style="color:var(--down)">⚠ Quantity and buy price are both needed.</span>';
+      $('investPreview').innerHTML = `<span style="color:var(--down)">⚠ ${state.qtyMode === 'amount' ? 'Amount and buy price are both needed.' : 'Quantity and buy price are both needed.'}</span>`;
       return;
     }
     const pf = await window.pulse.portfolio.add({
@@ -677,9 +926,13 @@ function bind() {
 
   $('holdings').addEventListener('click', async (e) => {
     const id = e.target.dataset.del;
-    if (!id) return;
-    const pf = await window.pulse.portfolio.remove(id, null);
-    if (pf) renderPortfolio(pf);
+    if (id) {
+      const pf = await window.pulse.portfolio.remove(id, null);
+      if (pf) renderPortfolio(pf);
+      return;
+    }
+    const row = e.target.closest('.hold');
+    if (row) openChart(row.dataset.sym, row.dataset.name);
   });
 
   // settings
@@ -714,10 +967,27 @@ function bind() {
     }
   });
 
+  // stock detail chart
+  $('chRange').addEventListener('click', (e) => {
+    const r = e.target.dataset.r;
+    if (!r) return;
+    document.querySelectorAll('#chRange button').forEach((b) => b.classList.toggle('active', b === e.target));
+    loadChart(r);
+  });
+  $('btnCloseChart').addEventListener('click', () => ($('modalChart').hidden = true));
+  $('btnCloseChart2').addEventListener('click', () => ($('modalChart').hidden = true));
+  $('btnAddFromChart').addEventListener('click', () => {
+    const sym = state.chartSym;
+    $('modalChart').hidden = true;
+    if (sym) openAdd(sym);
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       $('modalAdd').hidden = true;
       $('modalSet').hidden = true;
+      $('modalChart').hidden = true;
+      $('modalHypeAll').hidden = true;
     }
     if (e.key === 'F11') {
       e.preventDefault();
@@ -725,7 +995,7 @@ function bind() {
     }
   });
 
-  [$('modalAdd'), $('modalSet')].forEach((m) =>
+  [$('modalAdd'), $('modalSet'), $('modalChart'), $('modalHypeAll')].forEach((m) =>
     m.addEventListener('click', (e) => {
       if (e.target === m) m.hidden = true;
     })
