@@ -148,10 +148,11 @@ async function guard(name, fn) {
 const noteErrors = () => ({ errors: [...errors.entries()].map(([k, v]) => `${k}: ${v}`) });
 
 async function refreshFast() {
-  const [idx, pf, cryptoRows, fng, glob] = await Promise.all([
+  const [idx, pf, cryptoRows, traded, fng, glob] = await Promise.all([
     guard('indices', () => stocks.indices()),
     guard('portfolio', () => portfolio.valuate()),
     guard('crypto', () => crypto.pumped(10)),
+    guard('cryptoTraded', () => crypto.mostTraded(10)),
     guard('fng', () => crypto.fearGreed()),
     guard('cryptoGlobal', () => crypto.globalStats())
   ]);
@@ -164,6 +165,7 @@ async function refreshFast() {
     portfolio: pf || payload.portfolio || null,
     crypto: {
       rows: cryptoRows || (payload.crypto && payload.crypto.rows) || [],
+      traded: traded || (payload.crypto && payload.crypto.traded) || [],
       fng: fng || (payload.crypto && payload.crypto.fng) || null,
       global: glob || (payload.crypto && payload.crypto.global) || null
     },
@@ -180,11 +182,15 @@ async function refreshMedium() {
   const feed = await guard('news', () => news.fetchAll(15));
   const mentions = (feed && feed.mentions) || {};
   const held = ((payload.portfolio && payload.portfolio.rows) || []).map((r) => r.symbol);
-  const hype = await guard('hyped', () => stocks.hyped(mentions, held, settings.hyperMarket));
+  const [hype, pop] = await Promise.all([
+    guard('hyped', () => stocks.hyped(mentions, held, settings.hyperMarket)),
+    guard('popular', () => stocks.popular())
+  ]);
 
   broadcast({
     news: feed || payload.news || { items: [], counts: {} },
     hyped: (hype || payload.hyped || []).slice(0, 24),
+    popular: pop || payload.popular || [],
     meta: { ...noteErrors(), updatedAt: Date.now() }
   });
 }
@@ -340,12 +346,46 @@ function registerIpc() {
   ipcMain.handle('win:minimize', () => win && win.minimize());
   ipcMain.handle('win:hide', () => win && win.hide());
   ipcMain.handle('win:quit', () => app.quit());
+  ipcMain.handle('win:toggleMaximize', () => {
+    if (!win) return false;
+    if (win.isFullScreen()) {
+      win.setFullScreen(false);
+      return false;
+    }
+    if (win.isMaximized()) {
+      win.unmaximize();
+      return false;
+    }
+    win.maximize();
+    return true;
+  });
+  ipcMain.handle('win:toggleFullscreen', () => {
+    if (!win) return false;
+    const next = !win.isFullScreen();
+    win.setFullScreen(next);
+    return next;
+  });
+  ipcMain.handle('win:state', () => (win ? { maximized: win.isMaximized(), fullscreen: win.isFullScreen() } : {}));
   ipcMain.handle('shell:open', (_e, url) => {
     if (/^https?:\/\//i.test(url)) shell.openExternal(url);
   });
   ipcMain.handle('search:quote', async (_e, symbol) => {
     try {
       return await stocks.chart(symbol, '1mo', '1d');
+    } catch (err) {
+      return { error: err.message };
+    }
+  });
+  ipcMain.handle('search:symbols', async (_e, query) => {
+    try {
+      return await stocks.search(query);
+    } catch {
+      return [];
+    }
+  });
+  ipcMain.handle('search:priceAt', async (_e, { symbol, ts }) => {
+    try {
+      return await stocks.priceAt(symbol, ts);
     } catch (err) {
       return { error: err.message };
     }

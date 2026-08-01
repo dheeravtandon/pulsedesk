@@ -26,8 +26,13 @@ contextBridge.exposeInMainWorld('pulse', {
   win: {
     minimize: () => ipcRenderer.invoke('win:minimize'),
     hide: () => ipcRenderer.invoke('win:hide'),
-    quit: () => ipcRenderer.invoke('win:quit')
+    quit: () => ipcRenderer.invoke('win:quit'),
+    toggleMaximize: () => ipcRenderer.invoke('win:toggleMaximize'),
+    toggleFullscreen: () => ipcRenderer.invoke('win:toggleFullscreen'),
+    state: () => ipcRenderer.invoke('win:state')
   },
   openExternal: (url) => ipcRenderer.invoke('shell:open', url),
-  lookup: (symbol) => ipcRenderer.invoke('search:quote', symbol)
+  lookup: (symbol) => ipcRenderer.invoke('search:quote', symbol),
+  search: (query) => ipcRenderer.invoke('search:symbols', query),
+  priceAt: (symbol, ts) => ipcRenderer.invoke('search:priceAt', { symbol, ts })
 });
