@@ -1,0 +1,16 @@
+name = "pulsedesk-api"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Free plan: 100,000 requests/day. Edge caching keeps upstream calls far below that.
+workers_dev = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pulsedesk"
+# Replace after running: npx wrangler d1 create pulsedesk
+database_id = "REPLACE_WITH_YOUR_D1_ID"
+
+[observability]
+enabled = true
