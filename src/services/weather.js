@@ -1,6 +1,6 @@
 'use strict';
 
-const { getJSON, cachedJSON, settled } = require('./http');
+const { getJSON, cachedJSON, pool, settled } = require('./http');
 
 const CODES = {
   0: ['Clear sky', '☀️'], 1: ['Mainly clear', '🌤️'], 2: ['Partly cloudy', '⛅'], 3: ['Overcast', '☁️'],
@@ -98,4 +98,32 @@ async function today(manual) {
   };
 }
 
-module.exports = { today, locate };
+/** Fixed set of major financial hubs — independent of the user's own location. */
+const FIN_CITIES = [
+  { key: 'MUM', name: 'Mumbai', flag: '🇮🇳', lat: 19.076, lon: 72.8777 },
+  { key: 'NYC', name: 'New York', flag: '🇺🇸', lat: 40.7128, lon: -74.006 },
+  { key: 'LON', name: 'London', flag: '🇬🇧', lat: 51.5072, lon: -0.1276 },
+  { key: 'TOK', name: 'Tokyo', flag: '🇯🇵', lat: 35.6762, lon: 139.6503 },
+  { key: 'HKG', name: 'Hong Kong', flag: '🇭🇰', lat: 22.3193, lon: 114.1694 },
+  { key: 'FRA', name: 'Frankfurt', flag: '🇩🇪', lat: 50.1109, lon: 8.6821 }
+];
+
+async function financial() {
+  return pool(FIN_CITIES, 6, async (c) => {
+    try {
+      const w = await cachedJSON(
+        `wx:fin:${c.key}`,
+        `https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&current=temperature_2m,weather_code,is_day&timezone=auto`,
+        20 * 60 * 1000,
+        { timeout: 10000 }
+      );
+      const cur = w.current || {};
+      const [desc, icon] = CODES[cur.weather_code] || ['—', '🌡️'];
+      return { key: c.key, name: c.name, flag: c.flag, tempC: cur.temperature_2m, desc, icon, isDay: cur.is_day === 1 };
+    } catch {
+      return { key: c.key, name: c.name, flag: c.flag, tempC: null, desc: '—', icon: '🌡️', isDay: true };
+    }
+  });
+}
+
+module.exports = { today, locate, financial, FIN_CITIES };
