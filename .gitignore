@@ -1,6 +1,6 @@
 node_modules/
 .claude/settings.local.json
-dist/
+/dist/
 out/
 web/dist/
 assets/
