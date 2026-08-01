@@ -8,19 +8,35 @@
     "dev": "electron . --dev",
     "build": "electron-builder --win nsis portable"
   },
-  "keywords": ["finance", "portfolio", "stocks", "crypto", "desktop-widget"],
+  "keywords": [
+    "finance",
+    "portfolio",
+    "stocks",
+    "crypto",
+    "desktop-widget"
+  ],
   "author": "TandSol",
   "license": "MIT",
   "devDependencies": {
+    "docx": "^9.7.1",
     "electron": "^33.2.0",
-    "electron-builder": "^25.1.8"
+    "electron-builder": "^25.1.8",
+    "exceljs": "^4.4.0"
   },
   "build": {
     "appId": "in.tandsol.pulsedesk",
     "productName": "PulseDesk",
-    "files": ["main.js", "preload.js", "src/**/*", "assets/**/*"],
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "assets/**/*"
+    ],
     "win": {
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     }
   }
 }
