@@ -59,8 +59,8 @@ function saveSettings(patch = {}) {
 function createWindow() {
   const area = screen.getPrimaryDisplay().workAreaSize;
   const saved = settings.bounds;
-  const width = saved ? saved.width : Math.min(1180, area.width - 80);
-  const height = saved ? saved.height : Math.min(760, area.height - 60);
+  const width = saved ? saved.width : Math.min(1240, area.width - 80);
+  const height = saved ? saved.height : Math.min(960, area.height - 40);
 
   win = new BrowserWindow({
     width,
