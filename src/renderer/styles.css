@@ -37,6 +37,7 @@ html, body {
 }
 
 button, input, select { font-family: inherit; color: inherit; }
+button, .chip-btn, .mini, .add, .x, .clear { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 
 /* ---------- shell ---------- */
 
@@ -173,7 +174,7 @@ button, input, select { font-family: inherit; color: inherit; }
 
 /* Cards clip their own overflow, so grid rows cannot auto-size from content —
    each card declares the height its internal scroll areas are designed around. */
-.h-sm { min-height: 215px; }
+.h-sm { min-height: 236px; }
 .h-md { min-height: 300px; }
 .h-lg { min-height: 470px; }
 
@@ -264,7 +265,11 @@ button, input, select { font-family: inherit; color: inherit; }
 .hype .px b { font-size: 14px; font-variant-numeric: tabular-nums; }
 .hype .px span { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .hype .why { font-size: 9px; color: var(--txt-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hype .call { font-size: 8.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hype svg.spark { width: 100%; flex: 1; min-height: 30px; display: block; }
+
+.disclaim { font-size: 9px; color: var(--txt-mute); line-height: 1.55; border-top: 1px dashed var(--line); padding-top: 7px; }
+.disclaim b { color: var(--txt-dim); }
 
 .meter { height: 4px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
 .meter i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--gold), var(--down)); box-shadow: 0 0 10px rgba(255, 196, 77, 0.55); }
@@ -373,10 +378,35 @@ button, input, select { font-family: inherit; color: inherit; }
 .st-steady { background: rgba(33, 212, 253, .14); color: var(--acc-2); border-color: rgba(33, 212, 253, .3); }
 .st-moves { background: rgba(255, 196, 77, .14); color: var(--gold); border-color: rgba(255, 196, 77, .3); }
 .st-vol { background: rgba(255, 77, 109, .14); color: var(--down); border-color: rgba(255, 77, 109, .3); }
+.pop { cursor: pointer; }
 .pop .add { opacity: 0; border: none; background: none; color: var(--acc-2); cursor: pointer; font-size: 15px; line-height: 1; }
 .pop:hover .add { opacity: 1; }
 
+/* ---------- mutual funds ---------- */
+
+.fund-list { display: flex; flex-direction: column; gap: 3px; overflow-y: auto; flex: 1; padding-right: 3px; }
+.fund {
+  display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 9px;
+  padding: 6px 8px; border-radius: 10px; background: rgba(255, 255, 255, .03); transition: .15s;
+}
+.fund:hover { background: rgba(124, 92, 255, .12); }
+.fund .s { font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fund .t { font-size: 8.5px; color: var(--txt-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* ---------- weather + sessions ---------- */
+
+.wx-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
+.wx-col { display: flex; flex-direction: column; gap: 9px; min-width: 0; overflow-y: auto; padding-right: 2px; }
+
+.fin-cities { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 3px; }
+.fc {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: rgba(255, 255, 255, .035); border-radius: 10px; padding: 7px 10px; min-width: 58px;
+}
+.fc-f { font-size: 13px; }
+.fc-n { font-size: 8px; color: var(--txt-mute); white-space: nowrap; }
+.fc-i { font-size: 16px; line-height: 1.1; }
+.fc-t { font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
 
 .wx { display: flex; flex-direction: column; gap: 9px; }
 .wx-top { display: flex; align-items: center; gap: 12px; }
@@ -396,6 +426,9 @@ button, input, select { font-family: inherit; color: inherit; }
 .ses { display: flex; align-items: center; gap: 8px; font-size: 10.5px; padding: 4px 7px; border-radius: 8px; background: rgba(255,255,255,0.03); }
 .ses .st { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
 .ses .nm3 { font-weight: 800; letter-spacing: 0.8px; }
+.ses-badge { font-size: 7.5px; font-weight: 800; letter-spacing: .5px; padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
+.ses-badge.on { background: var(--up-soft); color: var(--up); }
+.ses-badge.off { background: rgba(255, 77, 109, .14); color: var(--down); }
 .ses .cd { margin-left: auto; color: var(--txt-mute); font-variant-numeric: tabular-nums; font-size: 9.5px; }
 
 /* ---------- news ---------- */
@@ -421,6 +454,7 @@ button, input, select { font-family: inherit; color: inherit; }
 .nw .dir .cbar i { display: block; height: 100%; }
 .nw .h { font-size: 11.5px; line-height: 1.45; font-weight: 600; }
 .nw .m { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin-top: 4px; font-size: 9px; color: var(--txt-mute); }
+.nw .likely { font-weight: 800; letter-spacing: .2px; }
 .nw .src { color: var(--acc-2); font-weight: 700; }
 .nw .tk { background: rgba(124, 92, 255, 0.2); border: 1px solid rgba(124, 92, 255, 0.3); border-radius: 5px; padding: 1px 5px; font-weight: 700; color: #c9bcff; }
 
@@ -451,6 +485,7 @@ button, input, select { font-family: inherit; color: inherit; }
 .modal-backdrop[hidden] { display: none; }
 .modal {
   width: min(430px, 88vw);
+  max-height: 88vh; overflow-y: auto;
   background: linear-gradient(160deg, rgba(26, 30, 60, 0.96), rgba(12, 14, 32, 0.97));
   border: 1px solid rgba(124, 92, 255, 0.4); border-radius: 16px;
   padding: 18px; display: flex; flex-direction: column; gap: 11px;
@@ -492,6 +527,44 @@ button, input, select { font-family: inherit; color: inherit; }
 .picked b { color: var(--up); }
 .picked .clear { margin-left: auto; border: none; background: none; color: var(--txt-mute); cursor: pointer; font-size: 15px; }
 
+/* recent-news strip: shared by the add-holding picker and the stock detail chart */
+.pick-news { display: flex; flex-direction: column; gap: 4px; max-height: 150px; overflow-y: auto; }
+.pn-head { font-size: 9px; letter-spacing: .8px; text-transform: uppercase; color: var(--txt-mute); }
+.pn-empty { font-size: 10.5px; color: var(--txt-mute); padding: 4px 0; }
+.pn-item {
+  display: grid; grid-template-columns: 16px 1fr; gap: 8px; align-items: start; cursor: pointer;
+  padding: 6px 8px; border-radius: 9px; background: rgba(255, 255, 255, .035); transition: .15s;
+}
+.pn-item:hover { background: rgba(124, 92, 255, .14); }
+.pn-dir { font-size: 11px; font-weight: 800; line-height: 1.4; }
+.pn-dir.up { color: var(--up); } .pn-dir.down { color: var(--down); } .pn-dir.flat { color: var(--flat); }
+.pn-t { font-size: 10.5px; line-height: 1.4; }
+
+/* stock detail chart */
+.chart-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.chart-head h3 { font-size: 16px; letter-spacing: .4px; }
+.chart-sub { font-size: 10.5px; color: var(--txt-mute); margin-top: 1px; }
+.chart-price { font-size: 15px; font-variant-numeric: tabular-nums; }
+.chart-price .muted { font-size: 10.5px; color: var(--txt-mute); font-weight: 500; }
+.chart-box { height: 200px; background: rgba(255, 255, 255, .025); border: 1px solid var(--line); border-radius: 12px; padding: 8px; }
+.chart-box svg { width: 100%; height: 100%; }
+
+/* all-scanned-stocks list */
+.hype-all-list { max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
+.ha-row {
+  display: grid; grid-template-columns: 26px 1fr auto auto auto; align-items: center; gap: 9px;
+  padding: 6px 8px; border-radius: 9px; background: rgba(255, 255, 255, .03); cursor: pointer; transition: .15s;
+}
+.ha-row:hover { background: rgba(124, 92, 255, .14); }
+.ha-rank { font-size: 9px; color: var(--txt-mute); font-weight: 800; }
+.ha-nm { min-width: 0; display: flex; flex-direction: column; }
+.ha-nm b { font-size: 11px; }
+.ha-nm span { font-size: 8.5px; color: var(--txt-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ha-px { font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.ha-px small { font-weight: 600; }
+.ha-hs { font-size: 10px; color: var(--gold); font-weight: 700; white-space: nowrap; }
+.ha-call { font-size: 9px; font-weight: 700; text-align: right; white-space: nowrap; }
+
 .auto-tag {
   font-size: 8px; letter-spacing: .8px; padding: 2px 6px; border-radius: 999px;
   background: rgba(33, 212, 253, .16); color: var(--acc-2); border: 1px solid rgba(33, 212, 253, .3); margin-left: 6px;
@@ -532,6 +605,7 @@ body.compact .h-md { min-height: 260px; }
   .hype-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .h-sm { min-height: 300px; }
   .h-lg { min-height: 500px; }
+  .wx-body { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {
   .grid { grid-template-columns: minmax(0, 1fr); }
@@ -539,5 +613,10 @@ body.compact .h-md { min-height: 260px; }
   .hype-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pf-body { grid-template-columns: minmax(0, 1fr); }
   .h-md { min-height: 640px; }
+  .h-lg { min-height: 620px; }
   .alloc { grid-row: auto; }
+  .modal { max-height: 92vh; }
+  .tb, .mini, .chip-btn, .add, .x { min-height: 30px; }
+  .mini, .chip-btn { padding: 7px 12px; }
+  .fund, .pop, .cx, .hold { padding: 9px 10px; }
 }
