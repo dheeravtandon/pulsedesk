@@ -348,6 +348,13 @@ async function charter() {
     H('3.7 Desktop behaviour', HeadingLevel.HEADING_2),
     P('Frameless always-on-top window, optional visibility on every virtual desktop, tray control, global shortcuts, adjustable opacity, click-through widget mode, compact layout, tiered auto-refresh and persistence of window state. Satisfies FUN-025 to FUN-029 and FUN-031.'),
 
+    H('3.8 Free public distribution', HeadingLevel.HEADING_2),
+    P('The same dashboard is published as an installable web application so anyone can use it on Android, iPhone or a desktop browser without a store, a fee or an account, alongside a downloadable Windows build. Hosting, delivery, the data relay and the usage counter must all sit inside permanently free tiers. Satisfies FUN-032 to FUN-035, FUN-038 and NFR-011 to NFR-013.'),
+    H('3.9 Anonymous usage measurement', HeadingLevel.HEADING_2),
+    P('The owner needs to know how many devices are using the app and how many times it is opened each day, without introducing a login and without collecting anything that identifies a person. Counts are surfaced on a private dashboard protected by a shared key. Satisfies FUN-036, FUN-037, SEC-011, SEC-012 and SEC-014.'),
+    H('3.10 Attribution', HeadingLevel.HEADING_2),
+    P('A subtle, permanent credit to the author appears in the status bar, the tray menu, the web manifest and the packaged application metadata. Satisfies FUN-039.'),
+
     H('4. Non-functional targets', HeadingLevel.HEADING_1),
     P('Cold start under three seconds; market data never older than sixty seconds while visible; a failing feed degrades that panel only and never blanks the dashboard; outbound calls pooled at eight concurrent requests to stay inside free rate limits; legible from 1240 px down to 620 px with no horizontal scrolling. Detailed in NFR-001 to NFR-010.'),
 
@@ -524,7 +531,25 @@ async function sdd() {
       ['settings.json', 'bounds, alwaysOnTop, opacity, clickThrough, compact, showOnAllDesktops, hyperMarket, weather coordinates, refresh intervals', 'Main process']
     ], [2200, 5600, 2200]),
 
-    H('9. Extension points', HeadingLevel.HEADING_1),
+    H('10. Web and mobile distribution', HeadingLevel.HEADING_1),
+    H('10.1 Edge worker', HeadingLevel.HEADING_2),
+    P('A browser cannot call Yahoo Finance, Binance or the publisher feeds directly, because none of them return cross-origin headers. A Cloudflare Worker therefore runs the same service modules the desktop main process runs and answers with CORS enabled. Every route is cached at the edge for the interval that matches how fast the data moves — sixty seconds for indices, crypto and quotes, five minutes for news and the hype ranking, thirty minutes for weather — so ten thousand users cost roughly the same upstream traffic as one. Weather coordinates are rounded to one decimal place before use, which both coarsens the location and raises the cache hit rate. Satisfies FUN-034, NFR-011 and SEC-013.'),
+    H('10.2 Web build', HeadingLevel.HEADING_2),
+    P('The web application is not a second implementation. A build script takes the same index.html, styles.css and app.js the desktop uses, rewrites the content security policy to permit connections to the worker, injects a browser bridge and a set of phone-specific style overrides, and emits the bundle. The bridge exposes exactly the window.pulse surface the renderer expects, so app.js is unaware of which host it is running in; underneath, market data comes from fetch instead of IPC and the portfolio lives in local storage instead of a JSON file. Holdings never leave the device. Satisfies FUN-032, FUN-035, SEC-015 and NFR-012.'),
+    H('10.3 Installability', HeadingLevel.HEADING_2),
+    P('A web manifest and a service worker make the app installable from the browser on Android, iOS and desktop, with its own icon and no browser chrome. The service worker precaches the shell so the app opens without a connection, and deliberately never caches market responses, because a stale price is worse than a visible failure. Android and desktop receive the native install prompt; iOS gets an Add to Home Screen hint on first visit. Satisfies FUN-032 and FUN-033.'),
+    H('10.4 Continuous delivery', HeadingLevel.HEADING_2),
+    P('One workflow builds the web bundle and publishes it to GitHub Pages on every push that touches the renderer or the web sources. A second workflow runs on a version tag, packages the Windows installer and portable executable on a Windows runner, and attaches them to the GitHub release. Icons for packaging are generated at build time from the same PNG encoder used for the tray, so no binary asset is committed. Satisfies FUN-038.'),
+    H('10.5 Cost model', HeadingLevel.HEADING_2),
+    P('GitHub Pages, GitHub Releases, GitHub Actions on a public repository, Cloudflare Workers and Cloudflare D1 all operate inside permanently free tiers at the scale this application generates. There is no paid dependency anywhere in the delivery chain; the deliberate exclusions — app store listings and code signing — are recorded with their costs in PD-DEP-001. Satisfies NFR-013.'),
+
+    H('11. Usage measurement', HeadingLevel.HEADING_1),
+    H('11.1 Counting without accounts', HeadingLevel.HEADING_2),
+    P('Each browser generates a random identifier for itself on first run and keeps it in local storage. The app posts one open event when it starts and a heartbeat every few minutes while it is visible; the worker records the identifier, the date, a timestamp, the event kind, the platform and the two-letter country supplied by the edge. No IP address, cookie, email or account is stored, and identifiers are sanitised and length-capped before they reach the database. Rows older than ninety days are deleted opportunistically on write. Satisfies FUN-036, SEC-012 and SEC-014.'),
+    H('11.2 Private dashboard', HeadingLevel.HEADING_2),
+    P('A static page reads an aggregate endpoint and shows devices active in the last five minutes, opens today, distinct devices today, this week and all time, a thirty-day trend, and a country and platform split. The endpoint is refused without a shared key held as a worker secret, so the dashboard is private without introducing an account for the owner either. The page states plainly that counts are devices rather than people, which is the honest reading of a login-free measure. Satisfies FUN-037 and SEC-011.'),
+
+    H('12. Extension points', HeadingLevel.HEADING_1),
     BULLET('Additional quote providers slot in behind the chart function as further fallbacks.'),
     BULLET('The ticker alias map is data, so covering more scrips is an edit rather than a code change.'),
     BULLET('The sentiment lexicon is a plain weight table and can be retuned or replaced with a model without touching the wire.'),

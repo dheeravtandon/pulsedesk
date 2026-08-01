@@ -42,7 +42,15 @@ const RTM_FUNCTIONAL = [
   ['FUN-028', 'Shell', 'Refresh on tiers — 60 s market, 5 min news/hype, 30 min weather', 'System', 'M', 'FUN', 'Charter §3.7', 'SDD §3.4', 'TC-F-028', '—', 'Verified'],
   ['FUN-029', 'Shell', 'Persist window bounds, pinning, opacity and compact mode between sessions', 'Investor', 'S', 'FUN', 'Charter §3.7', 'SDD §3.6', 'TC-F-029', '—', 'Verified'],
   ['FUN-030', 'Shell', 'Validate a symbol against the live quote service before a holding is saved', 'Investor', 'C', 'FUN', 'Charter §3.2', 'SDD §4.5', 'TC-F-030', '—', 'Verified'],
-  ['FUN-031', 'Shell', 'Offer a two-column compact layout for narrow placements', 'Investor', 'C', 'FUN', 'Charter §3.7', 'SDD §5.2', 'TC-F-031', '—', 'Verified']
+  ['FUN-031', 'Shell', 'Offer a two-column compact layout for narrow placements', 'Investor', 'C', 'FUN', 'Charter §3.7', 'SDD §5.2', 'TC-F-031', '—', 'Verified'],
+  ['FUN-032', 'Distribution', 'Serve the same dashboard as an installable web app on Android, iOS and desktop browsers', 'Public user', 'M', 'FUN', 'Charter §3.8', 'SDD §10.2', 'TC-F-032', '—', 'Verified'],
+  ['FUN-033', 'Distribution', 'Cache the app shell in a service worker so it opens without a connection', 'Public user', 'S', 'FUN', 'Charter §3.8', 'SDD §10.3', 'TC-F-033', '—', 'Developed'],
+  ['FUN-034', 'Distribution', 'Route web market data through an edge worker because browsers cannot call the upstreams directly', 'System', 'M', 'FUN', 'Charter §3.8', 'SDD §10.1', 'TC-F-034', '—', 'Verified'],
+  ['FUN-035', 'Distribution', 'Keep web holdings in browser local storage so the web build needs no account either', 'Public user', 'M', 'FUN', 'Charter §3.8', 'SDD §10.2', 'TC-F-035', '—', 'Verified'],
+  ['FUN-036', 'Analytics', 'Count app opens, distinct devices per day and devices active in the last five minutes without any login', 'Owner', 'M', 'FUN', 'Charter §3.9', 'SDD §11.1', 'TC-F-036', 'DPDP §4', 'Developed'],
+  ['FUN-037', 'Analytics', 'Present those counts on a private dashboard gated by a shared key, with a 30-day trend, country and platform split', 'Owner', 'S', 'FUN', 'Charter §3.9', 'SDD §11.2', 'TC-F-037', '—', 'Developed'],
+  ['FUN-038', 'Distribution', 'Publish the Windows installer and portable build automatically from a version tag', 'Owner', 'S', 'FUN', 'Charter §3.8', 'SDD §10.4', 'TC-F-038', '—', 'Developed'],
+  ['FUN-039', 'Distribution', 'Show a subtle author credit in the status bar, tray menu, manifest and packaged metadata', 'Owner', 'S', 'FUN', 'Charter §3.10', 'SDD §5.1', 'TC-F-039', '—', 'Verified']
 ];
 
 const RTM_SECURITY = [
@@ -55,7 +63,12 @@ const RTM_SECURITY = [
   ['SEC-007', 'Storage', 'Portfolio and settings are stored locally; nothing is uploaded to any server', 'Investor', 'M', 'SEC', 'DPDP Act 2023', 'SDD §6.5', 'TC-S-007', 'DPDP §4, §8', 'Verified'],
   ['SEC-008', 'Services', 'Outbound calls are limited to the documented public endpoints; no user data is sent as a parameter', 'System', 'M', 'SEC', 'DPDP Act 2023', 'SDD §6.5', 'TC-S-008', 'DPDP §8', 'Verified'],
   ['SEC-009', 'Services', 'All network calls carry an abort timeout so a hostile or hung endpoint cannot stall the app', 'System', 'S', 'SEC', 'CERT-In', 'SDD §3.7', 'TC-S-009', 'CERT-In', 'Verified'],
-  ['SEC-010', 'Renderer', 'Preview server binds to localhost and refuses paths outside the renderer directory', 'Developer', 'C', 'SEC', 'OWASP A01', 'SDD §7.2', 'TC-S-010', '—', 'Verified']
+  ['SEC-010', 'Renderer', 'Preview server binds to localhost and refuses paths outside the renderer directory', 'Developer', 'C', 'SEC', 'OWASP A01', 'SDD §7.2', 'TC-S-010', '—', 'Verified'],
+  ['SEC-011', 'Analytics', 'The statistics endpoint is refused without the shared key held as a worker secret', 'Owner', 'M', 'SEC', 'OWASP A01', 'SDD §11.2', 'TC-S-011', '—', 'Developed'],
+  ['SEC-012', 'Analytics', 'No IP address, cookie, email or account is stored — only a random client-generated id, coarse country and platform', 'Public user', 'M', 'SEC', 'DPDP Act 2023', 'SDD §11.1', 'TC-S-012', 'DPDP §4, §8', 'Developed'],
+  ['SEC-013', 'Worker', 'The worker holds no upstream credentials and accepts only its documented routes', 'System', 'M', 'SEC', 'OWASP A05', 'SDD §10.1', 'TC-S-013', 'CERT-In', 'Developed'],
+  ['SEC-014', 'Worker', 'Visitor identifiers are sanitised and length-capped before they reach the database', 'System', 'S', 'SEC', 'OWASP A03', 'SDD §11.1', 'TC-S-014', '—', 'Developed'],
+  ['SEC-015', 'Distribution', 'The web build declares a content security policy that allows connections only to its own origin and the configured worker', 'Public user', 'M', 'SEC', 'OWASP A05', 'SDD §10.2', 'TC-S-015', '—', 'Verified']
 ];
 
 const RTM_NFR = [
@@ -68,7 +81,10 @@ const RTM_NFR = [
   ['NFR-007', 'Renderer', 'Colour is never the only signal — direction is also carried by arrow glyphs and text', 'Investor', 'S', 'NFR', 'WCAG 2.1 AA', 'SDD §5.4', 'TC-N-007', 'GIGW 3.0', 'Verified'],
   ['NFR-008', 'Shell', 'Closing the window leaves the app resident in the tray rather than quitting', 'Investor', 'S', 'NFR', 'Charter §4', 'SDD §3.3', 'TC-N-008', '—', 'Verified'],
   ['NFR-009', 'Project', 'No build step for the renderer — plain HTML/CSS/JS so the app stays auditable', 'Owner', 'C', 'NFR', 'Charter §4', 'SDD §2.2', 'TC-N-009', '—', 'Verified'],
-  ['NFR-010', 'Services', 'Every primary data source has a documented fallback path', 'System', 'S', 'NFR', 'Charter §4', 'SDD §2.3', 'TC-N-010', '—', 'Verified']
+  ['NFR-010', 'Services', 'Every primary data source has a documented fallback path', 'System', 'S', 'NFR', 'Charter §4', 'SDD §2.3', 'TC-N-010', '—', 'Verified'],
+  ['NFR-011', 'Worker', 'Edge caching holds worker traffic inside the free allowance at ten thousand daily users', 'Owner', 'M', 'NFR', 'Charter §2', 'SDD §10.1', 'TC-N-011', '—', 'Developed'],
+  ['NFR-012', 'Distribution', 'The phone layout fits a 375 px viewport with no horizontal scrolling and safe-area padding', 'Public user', 'M', 'NFR', 'Charter §3.8', 'SDD §10.2', 'TC-N-012', 'GIGW 3.0', 'Verified'],
+  ['NFR-013', 'Distribution', 'Hosting, delivery and analytics stay at zero recurring cost', 'Owner', 'M', 'NFR', 'Charter §2', 'SDD §10.5', 'TC-N-013', '—', 'Verified']
 ];
 
 const CODE_REGISTER = [
@@ -90,8 +106,22 @@ const CODE_REGISTER = [
   ['tools/preview-server.js', 'Tooling', 'Localhost static server for renderer iteration outside Electron', 'http://localhost:5173', '—', 'SEC-010', 'SDD §7.2', 'Done'],
   ['tools/docs/content.js', 'Tooling', 'Content tables backing the generated document set', '—', '—', '—', 'SDD §7.3', 'Done'],
   ['tools/gen-docs.js', 'Tooling', 'Generates the docx and xlsx documents from content.js', '—', '—', '—', 'SDD §7.3', 'Done'],
-  ['.claude/launch.json', 'Config', 'Preview server launch configuration', '—', '—', '—', 'SDD §7.2', 'Done'],
-  ['README.md', 'Docs', 'Project handbook and document index', '—', '—', '—', 'SDD §1', 'Done']
+  ['.claude/launch.json', 'Config', 'Preview server launch configuration', 'localhost:5173, localhost:5174', '—', '—', 'SDD §7.2', 'Done'],
+  ['README.md', 'Docs', 'Project handbook and document index', '—', '—', '—', 'SDD §1', 'Done'],
+  ['worker/src/index.js', 'Worker', 'CORS market-data relay plus the anonymous usage counter and private stats endpoint', '/api/indices, /api/news, /api/hyped, /api/crypto, /api/sessions, /api/weather, /api/quotes, /api/fx, /api/lookup, /api/ping, /api/stats, /api/health', 'D1: events', 'FUN-034, FUN-036, FUN-037, SEC-011..SEC-014, NFR-011', 'SDD §10.1, §11', 'Done'],
+  ['worker/wrangler.toml', 'Config', 'Cloudflare Worker and D1 binding configuration', '—', 'D1: pulsedesk', 'NFR-013', 'SDD §10.1', 'Done'],
+  ['worker/schema.sql', 'Worker', 'Events table and indexes for the usage counter', '—', 'D1: events', 'FUN-036, SEC-012', 'SDD §11.1', 'Done'],
+  ['web/src/web-bridge.js', 'Web', 'Browser implementation of window.pulse — fetch instead of IPC, localStorage instead of files', '—', 'localStorage: pulse.*', 'FUN-034, FUN-035, FUN-036', 'SDD §10.2', 'Done'],
+  ['web/src/install.js', 'Web', 'Install prompt for Android/desktop and the Add to Home Screen hint for iOS', '—', '—', 'FUN-032', 'SDD §10.3', 'Done'],
+  ['web/src/sw.js', 'Web', 'Service worker — shell precache, network-only for market data', '—', 'CacheStorage', 'FUN-033', 'SDD §10.3', 'Done'],
+  ['web/src/web.css', 'Web', 'Web and phone overrides on top of the shared stylesheet', '—', '—', 'NFR-012', 'SDD §10.2', 'Done'],
+  ['web/src/manifest.webmanifest', 'Web', 'Installability metadata, icons, theme and author credit', '—', '—', 'FUN-032, FUN-039', 'SDD §10.3', 'Done'],
+  ['web/src/stats.html', 'Web', 'Private usage dashboard — online now, opens per day, people, 30-day trend, country and platform split', '/stats.html', 'reads /api/stats', 'FUN-037, SEC-011', 'SDD §11.2', 'Done'],
+  ['tools/build-web.js', 'Tooling', 'Assembles web/dist from the shared renderer, rewrites CSP, injects the bridge, emits icons and config', '—', '—', 'FUN-032, SEC-015', 'SDD §10.2', 'Done'],
+  ['tools/gen-icons.js', 'Tooling', 'Writes packaging icons from the runtime PNG encoder', '—', '—', 'FUN-038', 'SDD §10.4', 'Done'],
+  ['.github/workflows/pages.yml', 'CI', 'Builds and deploys the web app to GitHub Pages on push', '—', '—', 'FUN-032, NFR-013', 'SDD §10.4', 'Done'],
+  ['.github/workflows/release.yml', 'CI', 'Builds the Windows installer and portable exe on a version tag and attaches them to the release', '—', '—', 'FUN-038', 'SDD §10.4', 'Done'],
+  ['DEPLOY.md', 'Docs', 'Zero-cost distribution runbook for Pages, Releases, Cloudflare and the usage dashboard', '—', '—', 'NFR-013', 'SDD §10.5', 'Done']
 ];
 
 const RISKS = [
@@ -106,7 +136,12 @@ const RISKS = [
   ['RSK-009', 'Privacy', 'IP geolocation lookup discloses approximate user location to a third party', 'Weather needs coordinates', 'Privacy expectation mismatch', 3, 2, 'Mitigate', 'Manual latitude/longitude override in settings bypasses the lookup entirely; documented in the retention policy', 'Owner', 'Open', '2026-09-15'],
   ['RSK-010', 'Operational', 'Always-on-top window obscures other applications during screen sharing', 'Pinning is the default', 'User annoyance, accidental data exposure on shared screens', 4, 2, 'Mitigate', 'Ctrl+Alt+P hides instantly, tray toggles pinning, opacity and click-through modes available', 'Owner', 'Closed', '2026-08-01'],
   ['RSK-011', 'Technical', 'Electron major-version upgrade breaks transparency or always-on-top behaviour on Windows', 'Upstream Chromium changes', 'Widget stops behaving like a widget', 2, 3, 'Mitigate', 'Version pinned in package.json; smoke-test pinning and transparency before any upgrade', 'Owner', 'Open', '2027-01-15'],
-  ['RSK-012', 'Operational', 'Single maintainer — no cover for defect response', 'Solo project', 'Slow fixes if the maintainer is unavailable', 3, 3, 'Accept', 'Codebase kept dependency-light and documented so a second developer can pick it up from the Code Register', 'Owner', 'Open', '2026-12-01']
+  ['RSK-012', 'Operational', 'Single maintainer — no cover for defect response', 'Solo project', 'Slow fixes if the maintainer is unavailable', 3, 3, 'Accept', 'Codebase kept dependency-light and documented so a second developer can pick it up from the Code Register', 'Owner', 'Open', '2026-12-01'],
+  ['RSK-013', 'Operational', 'A viral share pushes the worker past the free 100,000 requests per day', 'Instagram traffic spike', 'Requests are throttled and the web app stops loading data', 2, 4, 'Mitigate', 'Edge caching at 60 s to 30 min means users share responses rather than each triggering one; the desktop app calls upstreams directly and is unaffected; raise cache TTLs if the ceiling is approached', 'Owner', 'Open', '2026-10-01'],
+  ['RSK-014', 'Distribution', 'Unsigned Windows installer triggers a SmartScreen warning and users abandon the download', 'No code-signing certificate', 'Lower install conversion, perception of malware', 5, 3, 'Accept', 'Release notes and the download page explain the warning and the More info to Run anyway path; signing is deferred because it is a recurring paid cost', 'Owner', 'Open', '2026-12-01'],
+  ['RSK-015', 'Analytics', 'Visitor counts drift when users clear site data or use several devices', 'Deliberate absence of accounts', 'People totals read high, retention reads low', 5, 1, 'Accept', 'Counts are presented as devices rather than people in the dashboard copy; opens per day remains the reliable engagement figure', 'Owner', 'Open', '2026-11-01'],
+  ['RSK-016', 'Technical', 'Upstream providers throttle Cloudflare datacentre IP ranges, so the web build breaks while the desktop build keeps working', 'Datacentre traffic filtering', 'Mobile and web users see empty panels', 3, 4, 'Mitigate', 'The /api/health endpoint reports each upstream separately; Stooq fallback covers US tickers; the fallback chain in stocks.js accepts an extra provider without restructuring', 'Owner', 'Open', '2026-10-15'],
+  ['RSK-017', 'Privacy', 'A user assumes the anonymous counter tracks them personally and distrusts the app', 'Any analytics at all', 'Reputational harm, uninstalls', 3, 2, 'Mitigate', 'The stats page and the retention policy both state plainly that no IP, cookie, email or account is stored; the identifier is client-generated and resettable by clearing site data', 'Owner', 'Open', '2026-10-01']
 ];
 
 const TIMELINE = [
@@ -133,6 +168,9 @@ const DPDP = [
   ['DP-10', '§9 Children data', 'Do not process children data without verifiable parental consent', 'Not applicable', 'Not Started', 'No age data collected; the app is a personal finance tool for adults', 'Owner', '2027-02-01', '—'],
   ['DP-11', '§11 Right to access and correction', 'Let the user access and correct their data', 'Applicable', 'Done', 'Holdings are editable in the UI and the underlying JSON files are plain text the user can open', 'Owner', '2027-02-01', 'Tray → Open data folder'],
   ['DP-12', '§16 Cross-border transfer', 'Respect restrictions on transfer outside India', 'Applicable', 'Done', 'No personal data is transmitted; outbound calls carry only ticker symbols and, unless overridden, an IP-derived coordinate pair', 'Owner', '2027-02-01', 'Manual coordinates remove even that'],
+  ['DP-13', '§4, §8 Usage analytics', 'Ensure any usage measurement is lawful, minimal and secured', 'Applicable', 'Done', 'The counter stores only a client-generated random id, date, event kind, platform and two-letter country in Cloudflare D1; no IP, cookie, email or account exists. Rows are deleted after 90 days. Evidence: worker/schema.sql, worker/src/index.js, PD-DRP-001 §2', 'Owner', '2027-02-01', 'Purpose is limited to counting devices and app opens'],
+  ['DP-14', '§5 Notice for analytics', 'Tell users what is measured', 'Applicable', 'Partial', 'The private stats page and PD-DRP-001 state it; an in-app privacy line on the web build is still to be added', 'Owner', '2026-10-01', 'Tracked alongside RSK-017'],
+  ['DP-15', '§8(7) Erasure of web data', 'Allow erasure of data held in the browser', 'Applicable', 'Done', 'Clearing site data for the domain removes holdings, settings, history and the visitor id; the visitor id is then regenerated as a new anonymous value', 'Owner', '2027-02-01', 'No server-side copy exists to erase'],
   ['CI-01', 'CERT-In 2022 §(ii) Log retention', 'Retain system logs for 180 days within India', 'Partially applicable', 'Partial', 'App keeps no server logs; only a 400-entry local net-worth history exists', 'Owner', '2027-02-01', 'Applies only if a hosted component is ever added'],
   ['CI-02', 'CERT-In 2022 §(i) Incident reporting', 'Report reportable incidents within 6 hours', 'Partially applicable', 'Not Started', 'No hosted surface to attack today', 'Owner', '2027-02-01', 'Revisit if a sync backend is introduced'],
   ['GW-01', 'GIGW 3.0 / WCAG 2.1 AA', 'Meet contrast and non-colour-only signalling', 'Applicable', 'Partial', 'Direction is carried by arrows and text as well as colour; a full contrast audit is outstanding', 'Owner', '2026-11-01', 'NFR-007']
@@ -143,7 +181,10 @@ const RETENTION = [
   ['Closed trades', 'Symbol, quantity, buy price, sell price, date', 'Held until the user clears portfolio.json', 'Needed to show realised P&L', 'portfolio.json'],
   ['Net-worth history', 'Date, portfolio value, unrealised P&L', 'Rolling 400 entries, oldest dropped automatically', 'Needed to draw the value trend', 'history.json'],
   ['Application settings', 'Window bounds, pinning, opacity, compact mode, hype universe, manual coordinates, cash balance', 'Held until reset or folder deletion', 'Needed to restore the user layout', 'settings.json'],
+  ['Browser app data (web build)', 'Holdings, base currency, cash, settings, value history, random visitor id', 'Held until the user clears site data for the domain', 'User instruction — the web build stores nothing on a server', 'localStorage on the user device'],
+  ['Usage events (web build)', 'Random visitor id, date, timestamp, open or heartbeat, platform, two-letter country', 'Rolling 90 days, older rows deleted automatically', 'Legitimate interest in knowing how many devices use the app; no identifier, IP, cookie or account is stored', 'Cloudflare D1: events'],
   ['In-memory API cache', 'Recent third-party responses', 'Discarded when the process exits; TTL 2–360 minutes', 'Rate-limit protection', 'process memory'],
+  ['Edge cache', 'Market, news and weather responses shared across all users', 'Expires automatically after 60 s to 30 min', 'Rate-limit protection; contains no user data', 'Cloudflare edge'],
   ['Chromium cache', 'Standard Electron/Chromium cache directories', 'Managed by Chromium; cleared with the data folder', 'Runtime requirement', '%APPDATA%\\pulse-desk']
 ];
 
