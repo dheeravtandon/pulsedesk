@@ -34,5 +34,6 @@ contextBridge.exposeInMainWorld('pulse', {
   openExternal: (url) => ipcRenderer.invoke('shell:open', url),
   lookup: (symbol) => ipcRenderer.invoke('search:quote', symbol),
   search: (query) => ipcRenderer.invoke('search:symbols', query),
-  priceAt: (symbol, ts) => ipcRenderer.invoke('search:priceAt', { symbol, ts })
+  priceAt: (symbol, ts) => ipcRenderer.invoke('search:priceAt', { symbol, ts }),
+  history: (symbol, range) => ipcRenderer.invoke('search:history', { symbol, range })
 });
