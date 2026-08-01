@@ -1,7 +1,20 @@
 'use strict';
 
 const $ = (id) => document.getElementById(id);
-const state = { data: {}, newsFilter: 'ALL', settings: {}, base: 'INR' };
+const state = {
+  data: {},
+  newsFilter: 'ALL',
+  cryptoTab: 'pumps',
+  popFilter: 'ALL',
+  settings: {},
+  base: 'INR',
+  pick: null,
+  priceInfo: null,
+  priceManual: false,
+  whenMode: 'now',
+  sugRows: [],
+  sugIndex: -1
+};
 
 /* ---------------- helpers ---------------- */
 
@@ -29,6 +42,7 @@ const num = (v, d = 2) => (v == null || !isFinite(v) ? '—' : v.toLocaleString(
 const pctS = (v, d = 2) => (v == null || !isFinite(v) ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(d)}%`);
 const cls = (v) => (v > 0.0001 ? 'up' : v < -0.0001 ? 'down' : 'flat');
 const arrow = (v) => (v > 0.0001 ? '▲' : v < -0.0001 ? '▼' : '■');
+const shortSym = (s) => String(s || '').replace('.NS', '').replace('.BO', '');
 
 function bigNum(v) {
   if (v == null || !isFinite(v)) return '—';
@@ -45,7 +59,6 @@ function coinPrice(p) {
   if (p >= 1000) return `$${p.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
   if (p >= 1) return `$${p.toFixed(3)}`;
   if (p >= 0.001) return `$${p.toFixed(5)}`;
-  // Micro-cap coins read better in full decimals than in exponent notation.
   const fixed = p.toFixed(Math.min(12, Math.ceil(-Math.log10(p)) + 3));
   return `$${fixed.replace(/0+$/, '')}`;
 }
@@ -57,6 +70,9 @@ const ago = (ts) => {
   const h = Math.round(m / 60);
   return h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
 };
+
+const dateLabel = (ts) =>
+  new Date(ts).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 function spark(series, color, h = 30, fill = true) {
   const pts = (series || []).filter((v) => isFinite(v));
@@ -99,7 +115,6 @@ function renderPulse(m) {
   const c = score > 12 ? 'var(--up)' : score < -12 ? 'var(--down)' : 'var(--gold)';
   chip.style.color = c;
   chip.style.borderColor = c;
-  chip.style.background = 'rgba(255,255,255,0.05)';
   const b = m.breadth || {};
   chip.textContent = `${mood} ${score > 0 ? '+' : ''}${score} · ${b.advancers || 0}▲/${b.decliners || 0}▼`;
 }
@@ -114,16 +129,15 @@ function renderHype(rows) {
   $('hypeMeta').textContent = `${rows.length} scanned`;
   el.innerHTML = top
     .map((r, i) => {
-      const c = cls(r.changePct);
       const col = r.changePct >= 0 ? '#17e29a' : '#ff4d6d';
       const cur = SYMBOLS[r.currency] || '';
       return `<div class="hype" data-sym="${esc(r.symbol)}">
         <span class="rank">#${i + 1}</span>
         <div>
-          <div class="sym">${esc(r.symbol.replace('.NS', '').replace('.BO', ''))}</div>
+          <div class="sym">${esc(shortSym(r.symbol))}</div>
           <div class="nm">${esc(r.name || '')}</div>
         </div>
-        <div class="px"><b>${cur}${num(r.price, r.price > 1000 ? 0 : 2)}</b><span class="${c}">${pctS(r.changePct, 1)}</span></div>
+        <div class="px"><b>${cur}${num(r.price, r.price > 1000 ? 0 : 2)}</b><span class="${cls(r.changePct)}">${pctS(r.changePct, 1)}</span></div>
         ${spark(r.series, col)}
         <div class="meter"><i style="width:${Math.max(6, r.hype)}%"></i></div>
         <div class="why">🔥 ${r.hype} · ${esc(r.reason)}</div>
@@ -137,7 +151,9 @@ function renderPortfolio(pf) {
   const t = pf.totals;
   state.base = t.baseCurrency;
   $('baseCur').value = t.baseCurrency;
+  document.querySelectorAll('#curToggle button').forEach((b) => b.classList.toggle('active', b.dataset.cur === t.baseCurrency));
   $('pfSub').textContent = `${t.positions} position${t.positions === 1 ? '' : 's'} · ${t.winners}▲ ${t.losers}▼`;
+  $('holdCount').textContent = t.positions ? `· ${t.positions}` : '';
 
   $('pfNet').textContent = money(t.netWorth);
   const d = $('pfDay');
@@ -147,7 +163,7 @@ function renderPortfolio(pf) {
   const hist = (pf.history || []).map((h) => h.value);
   $('pfSpark').innerHTML = hist.length > 1
     ? spark(hist, t.unrealised >= 0 ? '#17e29a' : '#ff4d6d', 48)
-    : `<div class="empty" style="padding:6px;font-size:9.5px">Value history builds up as the app runs</div>`;
+    : '<div class="empty" style="padding:6px;font-size:9.5px">Value history builds as the app runs</div>';
 
   const stats = [
     ['Invested', money(t.invested), `${t.positions} holdings`],
@@ -180,7 +196,7 @@ function renderPortfolio(pf) {
       <div class="mid"><b class="${cls(t.unrealised)}">${pctS(t.unrealisedPct, 1)}</b><span>RETURN</span></div>`;
     $('allocLegend').innerHTML = rows
       .slice(0, 8)
-      .map((r, i) => `<div class="leg"><i style="background:${COLORS[i % COLORS.length]}"></i><span>${esc(r.symbol.replace('.NS', ''))}</span><b>${r.weight.toFixed(1)}%</b></div>`)
+      .map((r, i) => `<div class="leg"><i style="background:${COLORS[i % COLORS.length]}"></i><span>${esc(shortSym(r.symbol))}</span><b>${r.weight.toFixed(1)}%</b></div>`)
       .join('');
   } else {
     $('donut').innerHTML = '';
@@ -189,38 +205,48 @@ function renderPortfolio(pf) {
 
   $('holdings').innerHTML = rows.length
     ? rows
-        .map(
-          (r) => `<div class="hold" data-id="${esc(r.id)}">
+        .map((r) => {
+          const since = r.buyDate
+            ? `since ${new Date(r.buyDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}${r.heldDays != null ? ` · ${r.heldDays}d` : ''}`
+            : '';
+          return `<div class="hold" data-id="${esc(r.id)}">
       <div class="h-l">
-        <div class="h-s">${esc(r.symbol.replace('.NS', '').replace('.BO', ''))} <span class="${cls(r.changePct)}" style="font-size:9px">${pctS(r.changePct, 1)}</span></div>
+        <div class="h-s">${esc(shortSym(r.symbol))} <span class="${cls(r.changePct)}" style="font-size:9px">${pctS(r.changePct, 1)}</span></div>
         <div class="h-q">${num(r.qty, r.qty % 1 ? 4 : 0)} @ ${num(r.avgPrice)} → ${num(r.price)}${r.live ? '' : ' (stale)'}</div>
+        <div class="h-since">${esc(since)}</div>
       </div>
       <div><div class="h-v">${money(r.value)}</div><div class="h-sub">inv ${money(r.invested)}</div></div>
       <div><div class="h-p ${cls(r.pnl)}">${money(r.pnl)}</div><div class="h-sub ${cls(r.pnl)}">${pctS(r.pnlPct, 1)}</div></div>
       <button class="x" data-del="${esc(r.id)}" title="Remove holding">×</button>
-    </div>`
-        )
+    </div>`;
+        })
         .join('')
-    : '<div class="empty">No holdings yet.<br/>Hit <b>+ Add</b> to track your first position.</div>';
+    : '<div class="empty">No holdings yet.<br/>Hit <b>+ Add holding</b> and start typing a company name.</div>';
 }
 
 function renderCrypto(c) {
   if (!c) return;
-  const rows = c.rows || [];
-  const win = rows.length ? rows[0].window : '5h';
-  $('cryptoMeta').textContent = rows.length ? `${rows[0].source} · ${win} window` : '—';
+  const tab = state.cryptoTab;
+  const rows = tab === 'traded' ? c.traded || [] : c.rows || [];
+  $('cryptoSub').textContent = tab === 'traded' ? 'most bought & sold · 24h turnover' : 'last 5 hours · top 10';
+
   $('cryptoList').innerHTML = rows.length
     ? rows
-        .map(
-          (r, i) => `<div class="cx" style="border-left-color:${r.change5h >= 0 ? 'var(--up)' : 'var(--down)'}">
+        .map((r, i) => {
+          const main = tab === 'traded' ? r.change24h : r.change5h;
+          const subLine = tab === 'traded'
+            ? `${esc(r.name)} · ${bigNum(r.trades24h)} trades`
+            : `${esc(r.name)} · vol ${bigNum(r.volume5hUsd)}`;
+          const subVal = tab === 'traded' ? `$${bigNum(r.volume24hUsd)}` : `24h ${pctS(r.change24h, 1)}`;
+          return `<div class="cx" style="border-left-color:${main >= 0 ? 'var(--up)' : 'var(--down)'}">
       <span class="n">${i + 1}</span>
-      <div style="min-width:0"><div class="s">${esc(r.symbol)}</div><div class="nm2">${esc(r.name)} · vol ${bigNum(r.volume5hUsd)}</div></div>
+      <div style="min-width:0"><div class="s">${esc(r.symbol)}</div><div class="nm2">${subLine}</div></div>
       <div class="p">${coinPrice(r.price)}</div>
-      <div class="c ${cls(r.change5h)}">${pctS(r.change5h, 1)}<small>24h ${pctS(r.change24h, 1)}</small></div>
-    </div>`
-        )
+      <div class="c ${cls(main)}">${pctS(main, 1)}<small>${subVal}</small></div>
+    </div>`;
+        })
         .join('')
-    : '<div class="empty">Loading crypto momentum…</div>';
+    : '<div class="empty">Loading crypto…</div>';
 
   const bits = [];
   if (c.fng) {
@@ -234,6 +260,35 @@ function renderCrypto(c) {
     bits.push(`24h <b class="${cls(c.global.capChange24h)}">${pctS(c.global.capChange24h, 1)}</b>`);
   }
   $('cryptoFoot').innerHTML = bits.join(' · ');
+}
+
+function renderPopular(rows) {
+  const el = $('popList');
+  if (!rows || !rows.length) {
+    el.innerHTML = '<div class="empty">Loading the steady names…</div>';
+    return;
+  }
+  const f = state.popFilter;
+  const list = rows.filter((r) => (f === 'ALL' ? true : f === 'IN' ? /\.(NS|BO)$/.test(r.symbol) : !/\.(NS|BO)$/.test(r.symbol)));
+  const band = (s) => (s === 'very steady' ? 'st-very' : s === 'steady' ? 'st-steady' : s === 'moves a lot' ? 'st-moves' : 'st-vol');
+
+  el.innerHTML = list.length
+    ? list
+        .map((r) => {
+          const cur = SYMBOLS[r.currency] || '';
+          return `<div class="pop">
+      <div style="min-width:0">
+        <div class="s">${esc(shortSym(r.symbol))} <span class="${cls(r.changePct)}" style="font-size:9px">${pctS(r.changePct, 1)}</span></div>
+        <div class="t">${esc(r.tag)} · ${esc(r.name)}</div>
+      </div>
+      <div class="px2">${cur}${num(r.price, r.price > 1000 ? 0 : 2)}<small>${r.volatility == null ? '' : `vol ${num(r.volatility, 0)}%`}</small></div>
+      <div class="yr ${cls(r.yearPct)}">${pctS(r.yearPct, 0)}<small>1 year</small></div>
+      <span class="st ${band(r.stability)}">${esc(r.stability)}</span>
+      <button class="add" data-add="${esc(r.symbol)}" title="Add to portfolio">+</button>
+    </div>`;
+        })
+        .join('')
+    : '<div class="empty">Nothing in this filter.</div>';
 }
 
 function renderWeather(w) {
@@ -269,7 +324,7 @@ function renderSessions(m) {
   $('sessions').innerHTML = m.sessions
     .map(
       (s) => `<div class="ses">
-      <span class="st" style="background:${s.isOpen ? 'var(--up)' : 'var(--down)'};box-shadow:0 0 8px ${s.isOpen ? 'var(--up)' : 'var(--down)'}"></span>
+      <span class="st" style="width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:${s.isOpen ? 'var(--up)' : 'var(--down)'};box-shadow:0 0 8px ${s.isOpen ? 'var(--up)' : 'var(--down)'}"></span>
       <span class="nm3">${esc(s.flag)} ${esc(s.name)}</span>
       <span style="color:var(--txt-mute)">${esc(s.clock)}</span>
       <span class="cd">${esc(s.countdown)}</span>
@@ -284,7 +339,7 @@ function renderNews(n) {
   const c = n.counts || {};
   const tot = Math.max(1, (c.bullish || 0) + (c.bearish || 0) + (c.neutral || 0));
   $('newsBar').innerHTML = `<span>${c.scanned || 0} scanned</span>
-    <span class="seg">
+    <span class="news-seg">
       <i style="width:${((c.bullish || 0) / tot) * 100}%;background:var(--up)"></i>
       <i style="width:${((c.neutral || 0) / tot) * 100}%;background:var(--flat)"></i>
       <i style="width:${((c.bearish || 0) / tot) * 100}%;background:var(--down)"></i>
@@ -306,7 +361,7 @@ function renderNews(n) {
           <div class="h">${esc(i.title)}</div>
           <div class="m">
             <span class="src">${esc(i.source)}</span><span>${esc(ago(i.ts))}</span>
-            ${(i.tickers || []).slice(0, 4).map((t) => `<span class="tk">${esc(t.replace('.NS', ''))}</span>`).join('')}
+            ${(i.tickers || []).slice(0, 4).map((t) => `<span class="tk">${esc(shortSym(t))}</span>`).join('')}
             ${i.hedged ? '<span>speculative</span>' : ''}
             ${(i.hits || []).length ? `<span>signal: ${esc(i.hits.slice(0, 2).join(', '))}</span>` : ''}
           </div>
@@ -330,6 +385,7 @@ function render(patch) {
   if (patch.hyped) renderHype(d.hyped);
   if (patch.portfolio) renderPortfolio(d.portfolio);
   if (patch.crypto) renderCrypto(d.crypto);
+  if (patch.popular) renderPopular(d.popular);
   if (patch.weather) renderWeather(d.weather);
   if (patch.market) {
     renderSessions(d.market);
@@ -337,6 +393,149 @@ function render(patch) {
   }
   if (patch.news) renderNews(d.news);
   if (patch.meta) renderStatus(d.meta);
+}
+
+/* ---------------- add-holding flow ---------------- */
+
+const buyTimestamp = () => {
+  if (state.whenMode === 'now') return Date.now();
+  const v = $('fWhen').value;
+  const t = v ? new Date(v).getTime() : NaN;
+  return isFinite(t) ? Math.min(t, Date.now()) : Date.now();
+};
+
+function renderSuggestions() {
+  const box = $('suggest');
+  if (!state.sugRows.length) {
+    box.hidden = true;
+    box.innerHTML = '';
+    return;
+  }
+  box.hidden = false;
+  box.innerHTML = state.sugRows
+    .map(
+      (r, i) => `<div class="sug${i === state.sugIndex ? ' on' : ''}" data-i="${i}">
+      <div style="min-width:0"><div class="nm">${esc(r.name)}</div><div class="ex">${esc(r.region || r.exchange)}</div></div>
+      <div><span class="sy">${esc(r.symbol)}</span><span class="ty">${esc(r.type)}</span></div>
+    </div>`
+    )
+    .join('');
+}
+
+async function pickSymbol(row) {
+  state.pick = row;
+  state.priceManual = false;
+  state.sugRows = [];
+  state.sugIndex = -1;
+  renderSuggestions();
+  $('fSymbol').value = '';
+  $('picked').hidden = false;
+  $('picked').innerHTML = `<b>${esc(row.symbol)}</b><span>${esc(row.name)}</span>
+    <span style="color:var(--txt-mute);font-size:10px">${esc(row.region || row.exchange || '')}</span>
+    <button class="clear" id="clearPick" title="Choose a different one">×</button>`;
+  $('clearPick').addEventListener('click', resetPick);
+  await fetchBuyPrice();
+}
+
+function resetPick() {
+  state.pick = null;
+  state.priceInfo = null;
+  state.priceManual = false;
+  $('picked').hidden = true;
+  $('picked').innerHTML = '';
+  $('fAvg').value = '';
+  $('fSymbol').value = '';
+  $('fSymbol').focus();
+  setPriceTag('auto', 'auto');
+  updatePreview();
+}
+
+function setPriceTag(text, kind) {
+  const el = $('priceTag');
+  el.textContent = text;
+  el.className = `auto-tag${kind === 'manual' ? ' manual' : kind === 'loading' ? ' loading' : ''}`;
+}
+
+async function fetchBuyPrice() {
+  if (!state.pick) return;
+  if (state.priceManual) return updatePreview();
+  setPriceTag('fetching…', 'loading');
+  const ts = buyTimestamp();
+  const info = await window.pulse.priceAt(state.pick.symbol, ts);
+  if (!info || info.error || !isFinite(info.price)) {
+    setPriceTag('type it in', 'manual');
+    state.priceInfo = null;
+    return updatePreview();
+  }
+  state.priceInfo = info;
+  $('fAvg').value = Number(info.price.toFixed(info.price < 10 ? 6 : 2));
+  setPriceTag(state.whenMode === 'now' ? 'live price' : info.exact ? 'price at that time' : 'nearest trading time', 'auto');
+  updatePreview();
+}
+
+async function updatePreview() {
+  const el = $('investPreview');
+  const qty = parseFloat($('fQty').value);
+  const price = parseFloat($('fAvg').value);
+  if (!state.pick) {
+    el.innerHTML = '<span class="muted">Pick a company above and the price fills in by itself.</span>';
+    return;
+  }
+  if (!isFinite(qty) || qty <= 0 || !isFinite(price)) {
+    el.innerHTML = `<span class="muted">Enter a quantity to see what this costs.</span>`;
+    return;
+  }
+
+  const cur = (state.priceInfo && state.priceInfo.currency) || '';
+  const sym = SYMBOLS[cur] || '';
+  const invested = qty * price;
+  const when = state.whenMode === 'now' ? 'right now' : state.priceInfo ? dateLabel(state.priceInfo.at) : 'that date';
+
+  let line2 = '';
+  if (state.whenMode === 'past') {
+    const live = await window.pulse.lookup(state.pick.symbol).catch(() => null);
+    if (live && !live.error && isFinite(live.price)) {
+      const changePct = ((live.price - price) / price) * 100;
+      const gain = qty * (live.price - price);
+      line2 = `<br/>Now <b>${sym}${num(live.price)}</b> → <b class="${cls(gain)}">${gain >= 0 ? '+' : ''}${sym}${num(Math.abs(gain))}</b>
+        <span class="${cls(changePct)}">(${pctS(changePct, 1)})</span> since you bought`;
+    }
+  }
+
+  el.innerHTML = `Buying <b>${num(qty, qty % 1 ? 4 : 0)}</b> of <b>${esc(shortSym(state.pick.symbol))}</b>
+    at <b>${sym}${num(price)}</b> (${esc(when)}) = <b>${sym}${num(invested)}</b> invested${line2}`;
+}
+
+function openAdd(prefillSymbol) {
+  $('modalAdd').hidden = false;
+  resetPick();
+  $('fQty').value = '';
+  state.whenMode = 'now';
+  document.querySelectorAll('#whenToggle button').forEach((b) => b.classList.toggle('active', b.dataset.when === 'now'));
+  $('whenPickWrap').hidden = true;
+  updatePreview();
+  if (prefillSymbol) {
+    $('fSymbol').value = prefillSymbol;
+    runSearch(prefillSymbol);
+  } else {
+    $('fSymbol').focus();
+  }
+}
+
+let searchTimer;
+function runSearch(q) {
+  clearTimeout(searchTimer);
+  if (!q || q.trim().length < 1) {
+    state.sugRows = [];
+    renderSuggestions();
+    return;
+  }
+  searchTimer = setTimeout(async () => {
+    const rows = await window.pulse.search(q.trim());
+    state.sugRows = rows || [];
+    state.sugIndex = rows && rows.length ? 0 : -1;
+    renderSuggestions();
+  }, 220);
 }
 
 /* ---------------- events ---------------- */
@@ -349,6 +548,7 @@ function bind() {
   });
   $('btnMin').addEventListener('click', () => window.pulse.win.minimize());
   $('btnHide').addEventListener('click', () => window.pulse.win.hide());
+  $('btnFull').addEventListener('click', () => window.pulse.win.toggleMaximize());
   $('btnCompact').addEventListener('click', () => {
     document.body.classList.toggle('compact');
     window.pulse.settings.set({ compact: document.body.classList.contains('compact') });
@@ -363,54 +563,122 @@ function bind() {
     })
   );
 
+  document.querySelectorAll('.chip-btn[data-crypto]').forEach((b) =>
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.chip-btn[data-crypto]').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      state.cryptoTab = b.dataset.crypto;
+      renderCrypto(state.data.crypto);
+    })
+  );
+
+  document.querySelectorAll('.chip-btn[data-pop]').forEach((b) =>
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.chip-btn[data-pop]').forEach((x) => x.classList.remove('active'));
+      b.classList.add('active');
+      state.popFilter = b.dataset.pop;
+      renderPopular(state.data.popular);
+    })
+  );
+
   $('newsList').addEventListener('click', (e) => {
     const row = e.target.closest('.nw');
     if (row && row.dataset.link) window.pulse.openExternal(row.dataset.link);
   });
 
-  // portfolio
-  $('btnAdd').addEventListener('click', () => {
-    $('modalAdd').hidden = false;
-    $('fSymbol').focus();
-  });
-  $('btnCancelAdd').addEventListener('click', () => ($('modalAdd').hidden = true));
-  $('btnSaveAdd').addEventListener('click', async () => {
-    const symbol = $('fSymbol').value.trim();
-    const qty = parseFloat($('fQty').value);
-    const avgPrice = parseFloat($('fAvg').value);
-    if (!symbol || !isFinite(qty) || qty <= 0 || !isFinite(avgPrice)) {
-      $('lookup').textContent = '⚠ symbol, quantity and average price are required';
-      return;
-    }
-    const pf = await window.pulse.portfolio.add({ symbol, qty, avgPrice });
-    if (pf) renderPortfolio(pf);
-    $('modalAdd').hidden = true;
-    $('fSymbol').value = $('fQty').value = $('fAvg').value = '';
-    $('lookup').textContent = '';
+  $('popList').addEventListener('click', (e) => {
+    const sym = e.target.dataset.add;
+    if (sym) openAdd(sym);
   });
 
-  let lookupTimer;
-  $('fSymbol').addEventListener('input', (e) => {
-    clearTimeout(lookupTimer);
-    const s = e.target.value.trim();
-    if (s.length < 2) return ($('lookup').textContent = '');
-    $('lookup').textContent = 'checking…';
-    lookupTimer = setTimeout(async () => {
-      const q = await window.pulse.lookup(s);
-      $('lookup').textContent = q && !q.error ? `✓ ${q.name} · ${q.currency} ${num(q.price)} (${pctS(q.changePct, 1)})` : '✗ symbol not found';
-      if (q && !q.error && !$('fAvg').value) $('fAvg').placeholder = num(q.price);
-    }, 550);
+  $('curToggle').addEventListener('click', async (e) => {
+    const cur = e.target.dataset.cur;
+    if (!cur) return;
+    const pf = await window.pulse.portfolio.setBase(cur);
+    if (pf) renderPortfolio(pf);
+  });
+  $('baseCur').addEventListener('change', async (e) => {
+    const pf = await window.pulse.portfolio.setBase(e.target.value);
+    if (pf) renderPortfolio(pf);
+  });
+
+  // add holding
+  $('btnAdd').addEventListener('click', () => openAdd());
+  $('btnCancelAdd').addEventListener('click', () => ($('modalAdd').hidden = true));
+
+  $('fSymbol').addEventListener('input', (e) => runSearch(e.target.value));
+  $('fSymbol').addEventListener('keydown', (e) => {
+    if (!state.sugRows.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      state.sugIndex = (state.sugIndex + 1) % state.sugRows.length;
+      renderSuggestions();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      state.sugIndex = (state.sugIndex - 1 + state.sugRows.length) % state.sugRows.length;
+      renderSuggestions();
+    } else if (e.key === 'Enter' && state.sugIndex >= 0) {
+      e.preventDefault();
+      pickSymbol(state.sugRows[state.sugIndex]);
+    }
+  });
+  $('suggest').addEventListener('click', (e) => {
+    const row = e.target.closest('.sug');
+    if (row) pickSymbol(state.sugRows[Number(row.dataset.i)]);
+  });
+
+  $('whenToggle').addEventListener('click', (e) => {
+    const when = e.target.dataset.when;
+    if (!when) return;
+    document.querySelectorAll('#whenToggle button').forEach((b) => b.classList.toggle('active', b === e.target));
+    state.whenMode = when;
+    $('whenPickWrap').hidden = when === 'now';
+    if (when === 'past' && !$('fWhen').value) {
+      const d = new Date(Date.now() - 7 * 864e5);
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      $('fWhen').value = d.toISOString().slice(0, 16);
+    }
+    state.priceManual = false;
+    fetchBuyPrice();
+  });
+  $('fWhen').addEventListener('change', () => {
+    state.priceManual = false;
+    fetchBuyPrice();
+  });
+
+  $('fAvg').addEventListener('input', () => {
+    state.priceManual = true;
+    setPriceTag('your price', 'manual');
+    updatePreview();
+  });
+  $('fQty').addEventListener('input', updatePreview);
+
+  $('btnSaveAdd').addEventListener('click', async () => {
+    const qty = parseFloat($('fQty').value);
+    const avgPrice = parseFloat($('fAvg').value);
+    if (!state.pick) {
+      $('investPreview').innerHTML = '<span style="color:var(--down)">⚠ Pick a company from the list first.</span>';
+      return;
+    }
+    if (!isFinite(qty) || qty <= 0 || !isFinite(avgPrice) || avgPrice < 0) {
+      $('investPreview').innerHTML = '<span style="color:var(--down)">⚠ Quantity and buy price are both needed.</span>';
+      return;
+    }
+    const pf = await window.pulse.portfolio.add({
+      symbol: state.pick.symbol,
+      name: state.pick.name,
+      qty,
+      avgPrice,
+      buyTs: buyTimestamp()
+    });
+    if (pf) renderPortfolio(pf);
+    $('modalAdd').hidden = true;
   });
 
   $('holdings').addEventListener('click', async (e) => {
     const id = e.target.dataset.del;
     if (!id) return;
     const pf = await window.pulse.portfolio.remove(id, null);
-    if (pf) renderPortfolio(pf);
-  });
-
-  $('baseCur').addEventListener('change', async (e) => {
-    const pf = await window.pulse.portfolio.setBase(e.target.value);
     if (pf) renderPortfolio(pf);
   });
 
@@ -431,22 +699,29 @@ function bind() {
   $('btnSaveSet').addEventListener('click', async () => {
     const lat = parseFloat($('sLat').value);
     const lon = parseFloat($('sLon').value);
-    await window.pulse.settings.set({
-      alwaysOnTop: $('sTop').checked,
-      showOnAllDesktops: $('sAll').checked,
-      opacity: parseFloat($('sOpacity').value),
-      hyperMarket: $('sMarket').value,
-      weather: { lat: isFinite(lat) ? lat : null, lon: isFinite(lon) ? lon : null }
-    });
-    const pf = await window.pulse.portfolio.setCash(parseFloat($('sCash').value) || 0);
-    if (pf) renderPortfolio(pf);
-    $('modalSet').hidden = true;
+    try {
+      await window.pulse.settings.set({
+        alwaysOnTop: $('sTop').checked,
+        showOnAllDesktops: $('sAll').checked,
+        opacity: parseFloat($('sOpacity').value),
+        hyperMarket: $('sMarket').value,
+        weather: { lat: isFinite(lat) ? lat : null, lon: isFinite(lon) ? lon : null }
+      });
+      const pf = await window.pulse.portfolio.setCash(parseFloat($('sCash').value) || 0);
+      if (pf) renderPortfolio(pf);
+    } finally {
+      $('modalSet').hidden = true;
+    }
   });
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       $('modalAdd').hidden = true;
       $('modalSet').hidden = true;
+    }
+    if (e.key === 'F11') {
+      e.preventDefault();
+      window.pulse.win.toggleFullscreen();
     }
   });
 
