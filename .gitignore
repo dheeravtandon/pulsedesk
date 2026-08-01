@@ -1,5 +1,7 @@
 node_modules/
 .claude/settings.local.json
+# Generated knowledge graph — rebuild for free with `graphify update .`
+graphify-out/
 /dist/
 out/
 web/dist/
