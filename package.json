@@ -8,6 +8,7 @@
     "dev": "electron . --dev",
     "icons": "node tools/gen-icons.js",
     "web": "node tools/build-web.js",
+    "worker:bundle": "node tools/bundle-worker.js",
     "docs": "node tools/gen-docs.js",
     "prebuild": "node tools/gen-icons.js",
     "build": "electron-builder --win nsis portable"
@@ -26,6 +27,7 @@
     "docx": "^9.7.1",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
+    "esbuild": "^0.28.1",
     "exceljs": "^4.4.0"
   },
   "build": {
