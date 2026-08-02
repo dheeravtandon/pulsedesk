@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; manifest-src 'self';" />
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://pulsedesk-api.dheeravtandon.workers.dev; manifest-src 'self';" />
   <title>PulseDesk</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#05060f" />
@@ -102,14 +102,14 @@
       <!-- HYPE -->
       <section class="card span-4 h-sm" id="cardHype">
         <div class="card-head">
-          <h2>Hype Radar <span class="sub">top 5 most-hyped stocks</span></h2>
+          <h2>Momentum Radar <span class="sub">top 5 stocks by market attention</span></h2>
           <div class="head-actions">
             <span class="badge live" id="hypeMeta">—</span>
             <button class="mini ghost" id="btnHypeMore">Show all</button>
           </div>
         </div>
         <div class="hype-grid" id="hypeGrid"></div>
-        <div class="disclaim">Hype ranks attention (volume + move + headlines), not direction. "Likely" calls are momentum reads. <b>Not investment advice.</b></div>
+        <div class="disclaim">Momentum Radar ranks attention (volume + move + headlines), not direction. "Likely" calls are momentum reads. <b>Not investment advice.</b></div>
       </section>
 
       <!-- NEWS -->
@@ -246,7 +246,7 @@
           <input id="fAvg" type="number" step="any" min="0" placeholder="fetched automatically" />
         </label>
       </div>
-      <label style="display:block;margin-top:8px">Currency for buy price
+      <label style="display:block;margin-top:8px">Currency the buy price is typed in
         <select id="fBuyCurrency" class="mini-select" style="width:100%">
           <option value="NATIVE" selected>Native (share's currency)</option>
           <option value="INR">INR (₹)</option>
@@ -257,6 +257,7 @@
           <option value="JPY">JPY (¥)</option>
         </select>
       </label>
+      <span class="pay-fx" id="buyCurFx"></span>
 
       <div class="pay-row" id="payRow" hidden>
         <span class="pay-k">Money you are spending is in</span>
@@ -303,7 +304,7 @@
           <input id="sPrice" type="number" step="any" min="0" placeholder="fetched automatically" />
         </label>
       </div>
-      <label style="display:block;margin-top:8px">Currency for sell price
+      <label style="display:block;margin-top:8px">Currency the sell price is typed in
         <select id="sSellCurrency" class="mini-select" style="width:100%">
           <option value="NATIVE" selected>Native (share's currency)</option>
           <option value="INR">INR (₹)</option>
@@ -314,6 +315,7 @@
           <option value="JPY">JPY (¥)</option>
         </select>
       </label>
+      <span class="pay-fx" id="sellCurFx"></span>
       <label style="margin-top:8px">Brokerage &amp; charges <span class="auto-tag">optional</span>
         <input id="sFees" type="number" step="any" min="0" placeholder="0" />
       </label>
@@ -337,7 +339,7 @@
         <label class="desktop-only">All desktops <input id="sAll" type="checkbox" /></label>
       </div>
       <label class="desktop-only">Opacity <input id="sOpacity" type="range" min="0.4" max="1" step="0.05" /></label>
-      <label>Hype universe
+      <label>Momentum Radar universe
         <select id="sMarket"><option value="both">India + US</option><option value="IN">India only</option><option value="US">US only</option></select>
       </label>
       <label>Cash / idle funds <input id="sCash" type="number" step="any" placeholder="0" /></label>
@@ -407,7 +409,7 @@
     <div class="modal wide">
       <h3>All scanned stocks <span class="sub" id="hypeAllCount"></span></h3>
       <div class="hype-all-list" id="hypeAllList"></div>
-      <div class="disclaim">Hype ranks attention, not direction. "Likely" calls read momentum + volume — not financial advice.</div>
+      <div class="disclaim">Momentum Radar ranks attention, not direction. "Likely" calls read momentum + volume — not financial advice.</div>
       <div class="modal-actions"><button class="mini solid" id="btnCloseHypeAll">Close</button></div>
     </div>
   </div>

@@ -24,7 +24,13 @@ const state = {
   theme: 'dark',
   // Amount-invested mode can be typed in a currency the share is not quoted in.
   payCur: 'NATIVE',
-  payRate: 1
+  payRate: 1,
+  // The number in the Buy price / Sell price field can be typed in a currency other than
+  // the one the share actually trades in — these hold the live rate to convert it back.
+  buyPriceCur: 'NATIVE',
+  buyPriceRate: 1,
+  sellPriceCur: 'NATIVE',
+  sellPriceRate: 1
 };
 
 /* ---------------- helpers ---------------- */
@@ -693,6 +699,7 @@ function resetPick() {
   $('fSymbol').value = '';
   $('fSymbol').focus();
   setPriceTag('auto', 'auto');
+  resetBuyPriceCur();
   updatePreview();
 }
 
@@ -725,13 +732,52 @@ async function fetchBuyPrice() {
   }
   state.priceInfo = info;
   $('fAvg').value = Number(info.price.toFixed(info.price < 10 ? 6 : 2));
-  setPriceTag(state.whenMode === 'now' ? 'live price' : info.exact ? 'price at that time' : 'nearest trading time', 'auto');
+  setPriceTag(
+    state.whenMode === 'now' ? 'live price' : info.noHistory ? 'no data that far back — verify' : info.exact ? 'price at that time' : 'nearest trading time',
+    info.noHistory ? 'manual' : 'auto'
+  );
+  resetBuyPriceCur();
   await refreshPayFx();
   updatePreview();
 }
 
 const nativeCur = () => (state.priceInfo && state.priceInfo.currency) || '';
 const payCurrency = () => (state.payCur === 'NATIVE' ? nativeCur() : state.payCur);
+
+/** The number in Buy price, converted into the share's own currency for every downstream calc. */
+function nativeBuyPrice() {
+  const raw = parseFloat($('fAvg').value);
+  if (!isFinite(raw)) return NaN;
+  return state.buyPriceCur === 'NATIVE' ? raw : raw * (state.buyPriceRate || 1);
+}
+
+function resetBuyPriceCur() {
+  state.buyPriceCur = 'NATIVE';
+  state.buyPriceRate = 1;
+  const sel = $('fBuyCurrency');
+  if (sel) sel.value = 'NATIVE';
+  const fx = $('buyCurFx');
+  if (fx) fx.textContent = '';
+}
+
+async function refreshBuyPriceFx() {
+  const native = nativeCur();
+  const fx = $('buyCurFx');
+  if (state.buyPriceCur === 'NATIVE' || !native || state.buyPriceCur === native) {
+    state.buyPriceRate = 1;
+    if (fx) fx.textContent = '';
+    return;
+  }
+  if (fx) fx.textContent = 'converting…';
+  const r = await window.pulse.fx(state.buyPriceCur, native).catch(() => null);
+  const rate = r && isFinite(r.rate) && r.rate > 0 ? r.rate : null;
+  state.buyPriceRate = rate || 1;
+  if (fx) {
+    fx.textContent = rate
+      ? `${SYMBOLS[state.buyPriceCur] || state.buyPriceCur}1 ≈ ${SYMBOLS[native] || native}${num(rate, rate >= 100 ? 2 : 4)}`
+      : 'live rate unavailable — treating it as 1:1';
+  }
+}
 
 /**
  * A share quoted in dollars can still be bought with rupees — the amount is converted at the
@@ -773,7 +819,7 @@ async function refreshPayFx() {
 /** In "by amount" mode the field holds money, not shares — the quantity is derived from the price. */
 function effectiveQty() {
   const raw = parseFloat($('fQty').value);
-  const price = parseFloat($('fAvg').value);
+  const price = nativeBuyPrice();
   if (!isFinite(raw) || raw <= 0) return NaN;
   if (state.qtyMode === 'amount') {
     const spend = raw * (state.payRate || 1);
@@ -785,7 +831,7 @@ function effectiveQty() {
 async function updatePreview() {
   const el = $('investPreview');
   const qty = effectiveQty();
-  const price = parseFloat($('fAvg').value);
+  const price = nativeBuyPrice();
   if (!state.pick) {
     el.innerHTML = '<span class="muted">Pick a company above and the price fills in by itself.</span>';
     return;
@@ -802,6 +848,10 @@ async function updatePreview() {
   const pay = payCurrency();
   const paySym = SYMBOLS[pay] || '';
   const converted = state.qtyMode === 'amount' && pay && pay !== cur;
+  const priceConverted = state.buyPriceCur !== 'NATIVE' && state.buyPriceCur !== cur;
+  const priceNote = priceConverted
+    ? ` <span class="muted">(you typed ${SYMBOLS[state.buyPriceCur] || state.buyPriceCur}${num(parseFloat($('fAvg').value))})</span>`
+    : '';
   const qtyLine =
     state.qtyMode === 'amount'
       ? `<b>${paySym}${num(parseFloat($('fQty').value))}</b>${converted ? ` <span class="muted">(${sym}${num(invested)})</span>` : ''}
@@ -819,7 +869,7 @@ async function updatePreview() {
     }
   }
 
-  el.innerHTML = `${qtyLine} at <b>${sym}${num(price)}</b> (${esc(when)})${line2}`;
+  el.innerHTML = `${qtyLine} at <b>${sym}${num(price)}</b> (${esc(when)})${priceNote}${line2}`;
 }
 
 function setQtyMode(mode) {
@@ -864,6 +914,7 @@ function openSell(id) {
   $('sWhen').value = '';
   $('sellWhenWrap').hidden = true;
   document.querySelectorAll('#sellWhenToggle button').forEach((b) => b.classList.toggle('active', b.dataset.when === 'now'));
+  resetSellPriceCur();
   setSellMode('qty');
   fetchSellPrice();
 }
@@ -902,8 +953,54 @@ async function fetchSellPrice() {
     return updateSellPreview();
   }
   $('sPrice').value = Number(info.price.toFixed(info.price < 10 ? 6 : 2));
-  setSellPriceTag(state.sellWhen === 'now' ? 'live price' : info.exact ? 'price at that time' : 'nearest trading time', 'auto');
+  setSellPriceTag(
+    state.sellWhen === 'now' ? 'live price' : info.noHistory ? 'no data that far back — verify' : info.exact ? 'price at that time' : 'nearest trading time',
+    info.noHistory ? 'manual' : 'auto'
+  );
+  resetSellPriceCur();
   updateSellPreview();
+}
+
+/** The number in Sell price, converted into the share's own currency (row.currency). */
+function nativeSellPrice() {
+  const raw = parseFloat($('sPrice').value);
+  if (!isFinite(raw)) return NaN;
+  return state.sellPriceCur === 'NATIVE' ? raw : raw * (state.sellPriceRate || 1);
+}
+
+/** Charges are typed in the same currency as the sell price, so the same rate applies. */
+function nativeSellFees() {
+  const raw = parseFloat($('sFees').value) || 0;
+  return state.sellPriceCur === 'NATIVE' ? raw : raw * (state.sellPriceRate || 1);
+}
+
+function resetSellPriceCur() {
+  state.sellPriceCur = 'NATIVE';
+  state.sellPriceRate = 1;
+  const sel = $('sSellCurrency');
+  if (sel) sel.value = 'NATIVE';
+  const fx = $('sellCurFx');
+  if (fx) fx.textContent = '';
+}
+
+async function refreshSellPriceFx() {
+  const row = state.sell;
+  const native = row ? row.currency || state.base : '';
+  const fx = $('sellCurFx');
+  if (state.sellPriceCur === 'NATIVE' || !native || state.sellPriceCur === native) {
+    state.sellPriceRate = 1;
+    if (fx) fx.textContent = '';
+    return;
+  }
+  if (fx) fx.textContent = 'converting…';
+  const r = await window.pulse.fx(state.sellPriceCur, native).catch(() => null);
+  const rate = r && isFinite(r.rate) && r.rate > 0 ? r.rate : null;
+  state.sellPriceRate = rate || 1;
+  if (fx) {
+    fx.textContent = rate
+      ? `${SYMBOLS[state.sellPriceCur] || state.sellPriceCur}1 ≈ ${SYMBOLS[native] || native}${num(rate, rate >= 100 ? 2 : 4)}`
+      : 'live rate unavailable — treating it as 1:1';
+  }
 }
 
 /** In "by amount" mode the field holds money, so units come from the sale price. */
@@ -923,8 +1020,8 @@ function updateSellPreview() {
   const row = state.sell;
   if (!row) return;
   const qty = sellQty();
-  const price = parseFloat($('sPrice').value);
-  const fees = parseFloat($('sFees').value) || 0;
+  const price = nativeSellPrice();
+  const fees = nativeSellFees();
 
   if (!isFinite(price)) return (el.innerHTML = '<span class="muted">Type the price you sold at.</span>');
   if (!isFinite(qty) || qty <= 0) {
@@ -946,9 +1043,13 @@ function updateSellPreview() {
   const inBase = cur !== state.base && row.fxRate
     ? ` <span class="muted">(${money(pnl * row.fxRate, state.base)} in ${esc(state.base)})</span>`
     : '';
+  const priceConverted = state.sellPriceCur !== 'NATIVE' && state.sellPriceCur !== cur;
+  const priceNote = priceConverted
+    ? ` <span class="muted">(you typed ${SYMBOLS[state.sellPriceCur] || state.sellPriceCur}${num(parseFloat($('sPrice').value))})</span>`
+    : '';
 
   el.innerHTML = `Selling <b>${num(qty, qty % 1 ? 4 : 0)}</b> of <b>${esc(shortSym(row.symbol))}</b>
-    at <b>${money(price, cur)}</b> = <b>${money(proceeds, cur)}</b>${fees ? ` <span class="muted">(after ${money(fees, cur)} charges)</span>` : ''}
+    at <b>${money(price, cur)}</b>${priceNote} = <b>${money(proceeds, cur)}</b>${fees ? ` <span class="muted">(after ${money(fees, cur)} charges)</span>` : ''}
     <br/>Cost was <b>${money(cost, cur)}</b> → <b class="${cls(pnl)}">${pnl >= 0 ? 'profit' : 'loss'} ${money(Math.abs(pnl), cur)}</b>
     <span class="${cls(pnl)}">(${pctS(pct, 1)})</span>${inBase}
     <br/><span class="muted">${left <= 1e-9 ? 'This closes the position completely.' : `${num(left, left % 1 ? 4 : 0)} left after this sale.`}</span>`;
@@ -1575,6 +1676,11 @@ function bind() {
     updatePreview();
   });
   $('fQty').addEventListener('input', updatePreview);
+  $('fBuyCurrency').addEventListener('change', async (e) => {
+    state.buyPriceCur = e.target.value;
+    await refreshBuyPriceFx();
+    updatePreview();
+  });
 
   $('qtyMode').addEventListener('click', (e) => {
     const mode = e.target.dataset.mode;
@@ -1586,8 +1692,9 @@ function bind() {
 
   $('btnSaveAdd').addEventListener('click', async () => {
     const qty = effectiveQty();
-    const avgPrice = parseFloat($('fAvg').value);
-    const buyCurrency = $('fBuyCurrency')?.value || 'NATIVE';
+    // Always saved in the share's own currency — whatever currency the user typed the
+    // price in gets converted here so the rest of the app (P&L, day baseline) stays correct.
+    const avgPrice = nativeBuyPrice();
     if (!state.pick) {
       $('investPreview').innerHTML = '<span class="warn">Pick a company from the list first.</span>';
       return;
@@ -1601,8 +1708,7 @@ function bind() {
       name: state.pick.name,
       qty,
       avgPrice,
-      buyTs: buyTimestamp(),
-      currency: buyCurrency
+      buyTs: buyTimestamp()
     });
     if (pf) renderPortfolio(pf);
     $('modalAdd').hidden = true;
@@ -1656,19 +1762,25 @@ function bind() {
     setSellPriceTag('your price', 'manual');
     updateSellPreview();
   });
+  $('sSellCurrency').addEventListener('change', async (e) => {
+    state.sellPriceCur = e.target.value;
+    await refreshSellPriceFx();
+    updateSellPreview();
+  });
   $('btnCancelSell').addEventListener('click', () => ($('modalSell').hidden = true));
   $('btnConfirmSell').addEventListener('click', async () => {
     const row = state.sell;
     if (!row) return;
     const qty = sellQty();
-    const price = parseFloat($('sPrice').value);
-    const fees = parseFloat($('sFees').value) || 0;
-    const sellCurrency = $('sSellCurrency')?.value || row.currency;
+    // Always sent to the backend in the share's own currency — same currency row.avgPrice
+    // is stored in — regardless of what currency the user typed the sell price in.
+    const price = nativeSellPrice();
+    const fees = nativeSellFees();
     if (!isFinite(price) || price < 0) return alert('Enter the price you sold at.');
     if (!isFinite(qty) || qty <= 0) return alert('Enter how many you sold.');
     if (qty - row.qty > 1e-9) return alert(`You only hold ${num(row.qty, 4)} of ${shortSym(row.symbol)}.`);
     try {
-      const pf = await window.pulse.portfolio.sell(row.id, { qty, price, fees, ts: sellTimestamp(), currency: sellCurrency });
+      const pf = await window.pulse.portfolio.sell(row.id, { qty, price, fees, ts: sellTimestamp(), currency: row.currency });
       if (pf) renderPortfolio(pf);
       $('modalSell').hidden = true;
     } catch (err) {

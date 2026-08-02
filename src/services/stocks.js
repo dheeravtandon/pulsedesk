@@ -214,8 +214,12 @@ async function priceAt(symbol, timestampMs) {
     }
   }
 
+  // No candle was found anywhere near the requested time (often because the symbol's
+  // history doesn't reach that far back) — the honest answer is today's price, but the
+  // "at" timestamp must stay the requested one, not now, or the UI mislabels a 2010
+  // purchase as having happened today.
   const daily = await chart(symbol, '2y', '1d');
-  return { price: daily.price, at: now, exact: false, currency: daily.currency, name: daily.name, granularity: 'fallback' };
+  return { price: daily.price, at: ts, exact: false, currency: daily.currency, name: daily.name, granularity: 'fallback', noHistory: true };
 }
 
 /** Large, widely-held names with a volatility read so "stable" is measured, not asserted. */
