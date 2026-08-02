@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, globalShortcut, shell, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, globalShortcut, shell, screen, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS = {
   clickThrough: false,
   compact: false,
   showOnAllDesktops: false,
+  theme: 'dark',
   hyperMarket: 'both',
   refresh: { fast: 60, medium: 300 },
   settingsVersion: SETTINGS_VERSION
@@ -433,6 +434,55 @@ function registerIpc() {
       return { error: err.message };
     }
   });
+  ipcMain.handle('search:fx', async (_e, { from, to }) => {
+    try {
+      return { rate: await stocks.fxRate(String(from || '').toUpperCase(), String(to || '').toUpperCase()) };
+    } catch (err) {
+      return { rate: 1, error: err.message };
+    }
+  });
+
+  ipcMain.handle('report:pdf', (_e, { html, fileName }) => printStatement(html, fileName));
+}
+
+/**
+ * The statement is rendered by Chromium itself: the renderer hands over a finished HTML
+ * document, an off-screen window lays it out, and printToPDF returns real vector PDF bytes —
+ * no PDF library, and nothing about the portfolio leaves the machine.
+ */
+async function printStatement(html, fileName) {
+  const temp = path.join(app.getPath('temp'), `pulsedesk-statement-${Date.now()}.html`);
+  let sheet = null;
+  try {
+    fs.writeFileSync(temp, String(html || ''), 'utf8');
+    sheet = new BrowserWindow({
+      show: false,
+      webPreferences: { javascript: false, contextIsolation: true, nodeIntegration: false, sandbox: true }
+    });
+    await sheet.loadFile(temp);
+    const pdf = await sheet.webContents.printToPDF({
+      printBackground: true,
+      pageSize: 'A4',
+      margins: { top: 0.5, bottom: 0.5, left: 0.45, right: 0.45 }
+    });
+
+    const safe = String(fileName || 'PulseDesk-statement.pdf').replace(/[\\/:*?"<>|]/g, '-');
+    const { canceled, filePath } = await dialog.showSaveDialog(win || undefined, {
+      title: 'Save portfolio statement',
+      defaultPath: path.join(app.getPath('documents'), safe),
+      filters: [{ name: 'PDF document', extensions: ['pdf'] }]
+    });
+    if (canceled || !filePath) return { canceled: true };
+
+    fs.writeFileSync(filePath, pdf);
+    shell.openPath(filePath);
+    return { canceled: false, path: filePath };
+  } catch (err) {
+    return { canceled: true, error: err.message };
+  } finally {
+    if (sheet && !sheet.isDestroyed()) sheet.destroy();
+    fs.unlink(temp, () => {});
+  }
 }
 
 /* ---------- lifecycle ---------- */
