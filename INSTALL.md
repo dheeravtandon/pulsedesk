@@ -53,7 +53,11 @@ Double-click **`PulseDesk.vbs`**. The app opens on its own with **no black conso
 
 The first time only, it asks permission to download what it runs on (2–5 minutes). After that it starts straight away.
 
-*`run-pulsedesk.bat` still works and does the same thing, but it keeps a console window open the whole time the app is running — use the `.vbs` unless you want to watch the logs.*
+*There is deliberately no `.bat` launcher: double-clicking one always opens a console window that stays on screen for as long as the app runs. If you want to watch the logs, run `npm start` from a terminal yourself.*
+
+**Quitting properly**
+
+Clicking **✕** only hides the window to the tray — the app keeps running. To actually quit, right-click the tray icon and choose **Quit**.
 
 ---
 

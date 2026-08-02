@@ -15,7 +15,7 @@
 
 ## What it is
 
-A frameless, always-on-top Electron widget that keeps one screen of live market context permanently in view: the five most-hyped stocks (with a show-all view of everything scanned), your portfolio P&L, forty market headlines each carrying a rise/fall call, the ten hardest-pumping crypto pairs of the last five hours, popular & steady large caps by sector, popular Indian mutual fund NAVs, a price chart for any listed stock, and market clocks for six financial hubs.
+A frameless Electron widget (optionally always-on-top) that keeps one screen of live market context in view: the five most-hyped stocks (with a show-all view of everything scanned), your portfolio P&L, forty market headlines each carrying a rise/fall call, the ten hardest-pumping crypto pairs of the last five hours, popular & steady large caps by sector, popular Indian mutual fund NAVs, a price chart for any listed stock, and market clocks for six financial hubs.
 
 ## Why it exists
 
@@ -26,7 +26,7 @@ Retail traders juggle a broker app, two news sites and a crypto exchange tab. Pu
 | # | Step | What happens | Where |
 |---|------|--------------|-------|
 | 1 | Launch | Electron boots, loads `settings.json` + `portfolio.json` from userData | `main.js` |
-| 2 | Window | Frameless transparent window, always-on-top at `screen-saver` level, tray icon registered | `main.js` |
+| 2 | Window | Frameless transparent window, tray icon registered; optional always-on-top at `floating` level | `main.js` |
 | 3 | Fast tick (60 s) | Indices, portfolio valuation, crypto pumps, Fear & Greed, sessions, breadth | `refreshFast()` |
 | 4 | Medium tick (5 min) | 22 RSS feeds → dedupe → sentiment → top 40; ticker mentions feed the hype scorer | `refreshMedium()` |
 | 5 | Broadcast | Main pushes partial payloads over `data:update`; renderer patches only what changed | `preload.js` |
@@ -46,7 +46,7 @@ Retail traders juggle a broker app, two news sites and a crypto exchange tab. Pu
 
 | Layer | Choice | Why |
 |-------|--------|-----|
-| Shell | Electron 33 | Frameless always-on-top window + tray, no browser chrome |
+| Shell | Electron 33 | Frameless window + tray, no browser chrome; pinning is opt-in |
 | Main process | Node 24 (`fetch`) | No HTTP dependency; CORS-free API access |
 | Renderer | Vanilla HTML/CSS/JS | Zero build step, instant start, small memory footprint |
 | Charts | Hand-rolled inline SVG | No chart library, no CSP exceptions |
