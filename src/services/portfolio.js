@@ -103,7 +103,7 @@ function removeHolding(id, sellPrice) {
  * is what it always was, so selling half a winner must not flatter the rest of the row.
  * Selling the whole quantity removes the holding entirely.
  */
-function sellHolding(id, { qty, price, fees = 0, ts } = {}) {
+function sellHolding(id, { qty, price, fees = 0, ts, currency } = {}) {
   const p = read();
   const h = p.holdings.find((x) => x.id === id);
   if (!h) throw new Error('holding not found');
@@ -125,6 +125,9 @@ function sellHolding(id, { qty, price, fees = 0, ts } = {}) {
     buyPrice: h.avgPrice,
     sellPrice,
     fees: charges,
+    // Prices are in the currency the share is quoted in. Recording it is what lets a closed
+    // dollar trade be reported in rupees later; without it the numbers would be read as base.
+    currency: currency || null,
     ts: when,
     date: new Date(when).toISOString().slice(0, 10)
   });
@@ -175,13 +178,30 @@ function history() {
   }
 }
 
+/**
+ * What "today's move" is measured from.
+ *
+ * A position opened today never lived through the previous close, so charging it the whole
+ * session's move is how a two-minute-old buy shows up as already down for the day. For those
+ * the honest baseline is what was actually paid.
+ */
+function dayBaseline(holding, prevClose) {
+  const midnight = new Date();
+  midnight.setHours(0, 0, 0, 0);
+  const openedToday = isFinite(holding.buyTs) && holding.buyTs >= midnight.getTime();
+  return openedToday ? { price: holding.avgPrice, sinceBuy: true } : { price: prevClose, sinceBuy: false };
+}
+
 async function valuate() {
   const p = read();
   const base = p.baseCurrency || 'INR';
   const symbols = p.holdings.map((h) => h.symbol);
 
   const q = symbols.length ? await quotes(symbols) : {};
-  const currencies = [...new Set(Object.values(q).map((x) => x.currency).filter(Boolean))];
+  // Closed trades carry their own currency, and the ticker may be long gone from the holdings.
+  const currencies = [
+    ...new Set([...Object.values(q).map((x) => x.currency), ...(p.trades || []).map((t) => t.currency)].filter(Boolean))
+  ];
   const fx = { [base]: 1 };
   for (const c of currencies) {
     if (!fx[c]) fx[c] = await fxRate(c, base);
@@ -196,7 +216,8 @@ async function valuate() {
     const invested = h.qty * h.avgPrice * rate;
     const value = h.qty * price * rate;
     const pnl = value - invested;
-    const dayPnl = h.qty * (price - prev) * rate;
+    const day = dayBaseline(h, prev);
+    const dayPnl = h.qty * (price - day.price) * rate;
     const heldDays = h.buyTs ? Math.max(0, Math.round((Date.now() - h.buyTs) / 864e5)) : null;
     return {
       ...h,
@@ -213,6 +234,9 @@ async function valuate() {
       pnl,
       pnlPct: invested ? (pnl / invested) * 100 : 0,
       dayPnl,
+      dayFrom: day.price,
+      dayPnlPct: day.price ? ((price - day.price) / day.price) * 100 : 0,
+      openedToday: day.sinceBuy,
       series: (quote && quote.series) || [],
       live: !!quote
     };
@@ -221,17 +245,21 @@ async function valuate() {
   const invested = rows.reduce((a, r) => a + r.invested, 0);
   const value = rows.reduce((a, r) => a + r.value, 0);
   const dayPnl = rows.reduce((a, r) => a + r.dayPnl, 0);
+  const openedToday = rows.filter((r) => r.openedToday).length;
   const unrealised = value - invested;
 
   // Closed trades, newest first, each carrying the money it actually made.
   const trades = (p.trades || [])
     .map((t) => {
-      const cost = t.buyPrice * t.qty;
-      const proceeds = t.sellPrice * t.qty - (t.fees || 0);
+      // Trades recorded before currency was captured are read as already being in base.
+      const rate = fx[t.currency] || 1;
+      const cost = t.buyPrice * t.qty * rate;
+      const proceeds = (t.sellPrice * t.qty - (t.fees || 0)) * rate;
       const pnl = proceeds - cost;
       return {
         ...t,
         ts: t.ts || (t.date ? Date.parse(t.date) : Date.now()),
+        fxRate: rate,
         cost,
         proceeds,
         pnl,
@@ -271,6 +299,9 @@ async function valuate() {
     totalPnlPct: totalCost ? (totalPnl / totalCost) * 100 : 0,
     dayPnl,
     dayPnlPct: value - dayPnl ? (dayPnl / (value - dayPnl)) * 100 : 0,
+    // Rows bought today are measured from their buy price, so the headline needs to say so.
+    openedToday,
+    dayFromBuy: openedToday > 0 && openedToday === rows.length,
     positions: rows.length,
     winners,
     losers: rows.length - winners,
