@@ -84,13 +84,55 @@ function removeHolding(id, sellPrice) {
     p.trades.push({
       id: uid(),
       symbol: h.symbol,
+      name: h.name || null,
       qty: h.qty,
       buyPrice: h.avgPrice,
       sellPrice: Number(sellPrice),
+      ts: Date.now(),
       date: new Date().toISOString().slice(0, 10)
     });
   }
   p.holdings = p.holdings.filter((x) => x.id !== id);
+  return write(p);
+}
+
+/**
+ * Sell part (or all) of a position.
+ *
+ * The average buy price is deliberately left untouched: the cost basis of what remains
+ * is what it always was, so selling half a winner must not flatter the rest of the row.
+ * Selling the whole quantity removes the holding entirely.
+ */
+function sellHolding(id, { qty, price, fees = 0, ts } = {}) {
+  const p = read();
+  const h = p.holdings.find((x) => x.id === id);
+  if (!h) throw new Error('holding not found');
+
+  const sellQty = Number(qty);
+  const sellPrice = Number(price);
+  if (!isFinite(sellQty) || sellQty <= 0) throw new Error('sell quantity must be > 0');
+  if (!isFinite(sellPrice) || sellPrice < 0) throw new Error('sell price must be >= 0');
+  // Floating-point quantities (0.1 + 0.2 crypto lots) must not block a full exit.
+  if (sellQty - h.qty > 1e-9) throw new Error('cannot sell more than you hold');
+
+  const charges = Number(fees) || 0;
+  const when = Number(ts) || Date.now();
+  p.trades.push({
+    id: uid(),
+    symbol: h.symbol,
+    name: h.name || null,
+    qty: sellQty,
+    buyPrice: h.avgPrice,
+    sellPrice,
+    fees: charges,
+    ts: when,
+    date: new Date(when).toISOString().slice(0, 10)
+  });
+
+  const left = h.qty - sellQty;
+  if (left <= 1e-9) p.holdings = p.holdings.filter((x) => x.id !== id);
+  else h.qty = left;
+
   return write(p);
 }
 
@@ -180,13 +222,38 @@ async function valuate() {
   const value = rows.reduce((a, r) => a + r.value, 0);
   const dayPnl = rows.reduce((a, r) => a + r.dayPnl, 0);
   const unrealised = value - invested;
-  const realised = (p.trades || []).reduce((a, t) => a + (t.sellPrice - t.buyPrice) * t.qty - (t.fees || 0), 0);
+
+  // Closed trades, newest first, each carrying the money it actually made.
+  const trades = (p.trades || [])
+    .map((t) => {
+      const cost = t.buyPrice * t.qty;
+      const proceeds = t.sellPrice * t.qty - (t.fees || 0);
+      const pnl = proceeds - cost;
+      return {
+        ...t,
+        ts: t.ts || (t.date ? Date.parse(t.date) : Date.now()),
+        cost,
+        proceeds,
+        pnl,
+        pnlPct: cost ? (pnl / cost) * 100 : 0
+      };
+    })
+    .sort((a, b) => b.ts - a.ts);
+
+  const realised = trades.reduce((a, t) => a + t.pnl, 0);
+  const realisedCost = trades.reduce((a, t) => a + t.cost, 0);
+  const tradeWins = trades.filter((t) => t.pnl > 0).length;
 
   rows.forEach((r) => (r.weight = value ? (r.value / value) * 100 : 0));
   rows.sort((a, b) => b.value - a.value);
 
   const winners = rows.filter((r) => r.pnl > 0).length;
   const sorted = [...rows].sort((a, b) => b.pnlPct - a.pnlPct);
+
+  // "Money in" is every rupee ever committed — what is still held plus what has been closed —
+  // so the headline return is measured against the whole journey, not just open positions.
+  const totalCost = invested + realisedCost;
+  const totalPnl = unrealised + realised;
 
   const totals = {
     baseCurrency: base,
@@ -197,21 +264,31 @@ async function valuate() {
     unrealised,
     unrealisedPct: invested ? (unrealised / invested) * 100 : 0,
     realised,
-    totalPnl: unrealised + realised,
+    realisedPct: realisedCost ? (realised / realisedCost) * 100 : 0,
+    realisedCost,
+    totalCost,
+    totalPnl,
+    totalPnlPct: totalCost ? (totalPnl / totalCost) * 100 : 0,
     dayPnl,
     dayPnlPct: value - dayPnl ? (dayPnl / (value - dayPnl)) * 100 : 0,
     positions: rows.length,
     winners,
     losers: rows.length - winners,
+    tradeCount: trades.length,
+    tradeWins,
+    tradeLosses: trades.length - tradeWins,
+    winRate: trades.length ? (tradeWins / trades.length) * 100 : null,
+    bestTrade: trades.length ? trades.reduce((a, t) => (t.pnl > a.pnl ? t : a)) : null,
+    worstTrade: trades.length ? trades.reduce((a, t) => (t.pnl < a.pnl ? t : a)) : null,
     best: sorted[0] || null,
     worst: sorted[sorted.length - 1] || null
   };
 
   const hist = pushSnapshot(Math.round(value), Math.round(unrealised));
-  return { totals, rows, trades: p.trades || [], history: hist };
+  return { totals, rows, trades, history: hist };
 }
 
 module.exports = {
-  init, read, replace, addHolding, updateHolding, removeHolding,
+  init, read, replace, addHolding, updateHolding, removeHolding, sellHolding,
   setBase, setCash, valuate, history
 };

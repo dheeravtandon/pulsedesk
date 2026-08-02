@@ -144,11 +144,35 @@
     const value = rows.reduce((a, r) => a + r.value, 0);
     const dayPnl = rows.reduce((a, r) => a + r.dayPnl, 0);
     const unrealised = value - invested;
-    const realised = (p.trades || []).reduce((a, t) => a + (t.sellPrice - t.buyPrice) * t.qty - (t.fees || 0), 0);
+
+    // Mirrors src/services/portfolio.js so web and desktop report identical numbers.
+    const trades = (p.trades || [])
+      .map((t) => {
+        const cost = t.buyPrice * t.qty;
+        const proceeds = t.sellPrice * t.qty - (t.fees || 0);
+        const pnl = proceeds - cost;
+        return {
+          ...t,
+          ts: t.ts || (t.date ? Date.parse(t.date) : Date.now()),
+          cost,
+          proceeds,
+          pnl,
+          pnlPct: cost ? (pnl / cost) * 100 : 0
+        };
+      })
+      .sort((a, b) => b.ts - a.ts);
+
+    const realised = trades.reduce((a, t) => a + t.pnl, 0);
+    const realisedCost = trades.reduce((a, t) => a + t.cost, 0);
+    const tradeWins = trades.filter((t) => t.pnl > 0).length;
 
     rows.forEach((r) => (r.weight = value ? (r.value / value) * 100 : 0));
     rows.sort((a, b) => b.value - a.value);
     const winners = rows.filter((r) => r.pnl > 0).length;
+    const sorted = [...rows].sort((a, b) => b.pnlPct - a.pnlPct);
+
+    const totalCost = invested + realisedCost;
+    const totalPnl = unrealised + realised;
 
     return {
       totals: {
@@ -160,15 +184,27 @@
         unrealised,
         unrealisedPct: invested ? (unrealised / invested) * 100 : 0,
         realised,
-        totalPnl: unrealised + realised,
+        realisedPct: realisedCost ? (realised / realisedCost) * 100 : 0,
+        realisedCost,
+        totalCost,
+        totalPnl,
+        totalPnlPct: totalCost ? (totalPnl / totalCost) * 100 : 0,
         dayPnl,
         dayPnlPct: value - dayPnl ? (dayPnl / (value - dayPnl)) * 100 : 0,
         positions: rows.length,
         winners,
-        losers: rows.length - winners
+        losers: rows.length - winners,
+        tradeCount: trades.length,
+        tradeWins,
+        tradeLosses: trades.length - tradeWins,
+        winRate: trades.length ? (tradeWins / trades.length) * 100 : null,
+        bestTrade: trades.length ? trades.reduce((a, t) => (t.pnl > a.pnl ? t : a)) : null,
+        worstTrade: trades.length ? trades.reduce((a, t) => (t.pnl < a.pnl ? t : a)) : null,
+        best: sorted[0] || null,
+        worst: sorted[sorted.length - 1] || null
       },
       rows,
-      trades: p.trades || [],
+      trades,
       history: pushSnapshot(Math.round(value), Math.round(unrealised))
     };
   }
@@ -310,6 +346,40 @@
           p.trades.push({ id: uid(), symbol: h.symbol, qty: h.qty, buyPrice: h.avgPrice, sellPrice: Number(sellPrice), date: new Date().toISOString().slice(0, 10) });
         }
         p.holdings = p.holdings.filter((x) => x.id !== id);
+        portfolioStore.write(p);
+        const v = await valuate();
+        emit({ portfolio: v });
+        return v;
+      },
+      /** Mirrors sellHolding() in src/services/portfolio.js — average buy price is left alone. */
+      sell: async (id, { qty, price, fees = 0, ts } = {}) => {
+        const p = portfolioStore.read();
+        const h = p.holdings.find((x) => x.id === id);
+        if (!h) throw new Error('holding not found');
+
+        const sellQty = Number(qty);
+        const sellPrice = Number(price);
+        if (!isFinite(sellQty) || sellQty <= 0) throw new Error('sell quantity must be > 0');
+        if (!isFinite(sellPrice) || sellPrice < 0) throw new Error('sell price must be >= 0');
+        if (sellQty - h.qty > 1e-9) throw new Error('cannot sell more than you hold');
+
+        const when = Number(ts) || Date.now();
+        p.trades.push({
+          id: uid(),
+          symbol: h.symbol,
+          name: h.name || null,
+          qty: sellQty,
+          buyPrice: h.avgPrice,
+          sellPrice,
+          fees: Number(fees) || 0,
+          ts: when,
+          date: new Date(when).toISOString().slice(0, 10)
+        });
+
+        const left = h.qty - sellQty;
+        if (left <= 1e-9) p.holdings = p.holdings.filter((x) => x.id !== id);
+        else h.qty = left;
+
         portfolioStore.write(p);
         const v = await valuate();
         emit({ portfolio: v });

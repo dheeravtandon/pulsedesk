@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('pulse', {
     add: (h) => ipcRenderer.invoke('portfolio:add', h),
     update: (id, patch) => ipcRenderer.invoke('portfolio:update', { id, patch }),
     remove: (id, sellPrice) => ipcRenderer.invoke('portfolio:remove', { id, sellPrice }),
+    sell: (id, sale) => ipcRenderer.invoke('portfolio:sell', { id, sale }),
     setBase: (c) => ipcRenderer.invoke('portfolio:base', c),
     setCash: (a) => ipcRenderer.invoke('portfolio:cash', a),
     import: (d) => ipcRenderer.invoke('portfolio:import', d)
