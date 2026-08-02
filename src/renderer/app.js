@@ -18,8 +18,13 @@ const state = {
   sugRows: [],
   sugIndex: -1,
   chartSym: null,
-  chart: null,
-  sell: null
+  charts: { main: null, buy: null },
+  sell: null,
+  session: null,
+  theme: 'dark',
+  // Amount-invested mode can be typed in a currency the share is not quoted in.
+  payCur: 'NATIVE',
+  payRate: 1
 };
 
 /* ---------------- helpers ---------------- */
@@ -29,19 +34,20 @@ const esc = (s) =>
 
 const SYMBOLS = { INR: '₹', USD: '$', EUR: '€', GBP: '£', AED: 'د.إ', JPY: '¥' };
 
+/** The minus sign belongs in front of the currency symbol, not between it and the digits. */
 function money(v, cur = state.base, compact = false) {
   if (v == null || !isFinite(v)) return '—';
   const abs = Math.abs(v);
-  const sym = SYMBOLS[cur] || `${cur} `;
+  const sym = (v < 0 ? '-' : '') + (SYMBOLS[cur] || `${cur} `);
   if (compact || abs >= 1e5) {
     if (cur === 'INR') {
-      if (abs >= 1e7) return `${sym}${(v / 1e7).toFixed(2)} Cr`;
-      if (abs >= 1e5) return `${sym}${(v / 1e5).toFixed(2)} L`;
+      if (abs >= 1e7) return `${sym}${(abs / 1e7).toFixed(2)} Cr`;
+      if (abs >= 1e5) return `${sym}${(abs / 1e5).toFixed(2)} L`;
     }
-    if (abs >= 1e9) return `${sym}${(v / 1e9).toFixed(2)}B`;
-    if (abs >= 1e6) return `${sym}${(v / 1e6).toFixed(2)}M`;
+    if (abs >= 1e9) return `${sym}${(abs / 1e9).toFixed(2)}B`;
+    if (abs >= 1e6) return `${sym}${(abs / 1e6).toFixed(2)}M`;
   }
-  return sym + v.toLocaleString('en-IN', { minimumFractionDigits: abs < 100 ? 2 : 0, maximumFractionDigits: 2 });
+  return sym + abs.toLocaleString('en-IN', { minimumFractionDigits: abs < 100 ? 2 : 0, maximumFractionDigits: 2 });
 }
 
 const num = (v, d = 2) => (v == null || !isFinite(v) ? '—' : v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
@@ -174,7 +180,7 @@ function renderHype(rows) {
   $('hypeMeta').textContent = `${rows.length} scanned`;
   el.innerHTML = top
     .map((r, i) => {
-      const col = r.changePct >= 0 ? '#17e29a' : '#ff4d6d';
+      const col = cssVar(r.changePct >= 0 ? '--up' : '--down', '#17e29a');
       const cur = SYMBOLS[r.currency] || '';
       const call = likelyCall(r.changePct, r.volumeRatio);
       return `<div class="hype" data-sym="${esc(r.symbol)}" data-name="${esc(r.name || '')}">
@@ -186,7 +192,7 @@ function renderHype(rows) {
         <div class="px"><b>${cur}${num(r.price, r.price > 1000 ? 0 : 2)}</b><span class="${cls(r.changePct)}">${pctS(r.changePct, 1)}</span></div>
         ${spark(r.series, col)}
         <div class="meter"><i style="width:${Math.max(6, r.hype)}%"></i></div>
-        <div class="why">🔥 ${r.hype} · ${esc(r.reason)}</div>
+        <div class="why"><b>${r.hype}</b> · ${esc(r.reason)}</div>
         <div class="call ${call.cls}">${esc(call.text)}</div>
       </div>`;
     })
@@ -205,7 +211,7 @@ function renderHypeAll() {
         <span class="ha-rank">#${i + 1}</span>
         <div class="ha-nm"><b>${esc(shortSym(r.symbol))}</b><span>${esc(r.name || '')}</span></div>
         <span class="ha-px ${cls(r.changePct)}">${cur}${num(r.price, r.price > 1000 ? 0 : 2)} <small>${pctS(r.changePct, 1)}</small></span>
-        <span class="ha-hs">🔥 ${r.hype}</span>
+        <span class="ha-hs">${r.hype}</span>
         <span class="ha-call ${call.cls}">${esc(call.text)}</span>
       </div>`;
         })
@@ -226,11 +232,14 @@ function renderPortfolio(pf) {
   $('pfNet').textContent = money(t.netWorth);
   const d = $('pfDay');
   d.className = `d ${cls(t.dayPnl)}`;
-  d.textContent = `${arrow(t.dayPnl)} ${money(t.dayPnl)} today (${pctS(t.dayPnlPct)})`;
+  // Positions opened today are measured from their buy price, so say so rather than
+  // implying they lived through a session they were never in.
+  const dayNote = t.dayFromBuy ? ' since you bought' : t.openedToday ? ` (${t.openedToday} bought today)` : '';
+  d.textContent = `${arrow(t.dayPnl)} ${money(t.dayPnl)} today${dayNote} ${pctS(t.dayPnlPct)}`;
 
   const hist = (pf.history || []).map((h) => h.value);
   $('pfSpark').innerHTML = hist.length > 1
-    ? spark(hist, t.unrealised >= 0 ? '#17e29a' : '#ff4d6d', 48)
+    ? spark(hist, cssVar(t.unrealised >= 0 ? '--up' : '--down', '#17e29a'), 48)
     : '<div class="empty" style="padding:6px;font-size:9.5px">Value history builds as the app runs</div>';
 
   // Headline "money made": everything still held plus everything already sold.
@@ -282,7 +291,7 @@ function renderPortfolio(pf) {
         return seg;
       })
       .join('');
-    $('donut').innerHTML = `<svg viewBox="0 0 92 92"><circle cx="46" cy="46" r="${R}" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="11"/>${arcs}</svg>
+    $('donut').innerHTML = `<svg viewBox="0 0 92 92"><circle cx="46" cy="46" r="${R}" fill="none" stroke="${cssVar('--surf-3', 'rgba(255,255,255,0.09)')}" stroke-width="11"/>${arcs}</svg>
       <div class="mid"><b class="${cls(t.unrealised)}">${pctS(t.unrealisedPct, 1)}</b><span>RETURN</span></div>`;
     $('allocLegend').innerHTML = rows
       .slice(0, 8)
@@ -443,18 +452,111 @@ function renderFunds(rows) {
 function renderSessions(m) {
   if (!m || !m.sessions) return;
   $('sessions').innerHTML = m.sessions
-    .map((s) => {
-      const col = s.isOpen ? 'var(--up)' : 'var(--down)';
-      return `<div class="ses">
+    .map(
+      (s, i) => `<div class="ses" data-ses="${i}" title="Open the full trading schedule for ${esc(s.name)}">
       <div class="ses-top">
-        <span class="st" style="background:${col};box-shadow:0 0 8px ${col}"></span>
-        <span class="nm3">${esc(s.flag)} ${esc(s.name)}</span>
+        <span class="st ${s.isOpen ? 'on' : 'off'}"></span>
+        <span class="nm3">${esc(s.name)}</span>
         <span class="ses-badge ${s.isOpen ? 'on' : 'off'}">${s.isOpen ? 'OPEN' : 'CLOSED'}</span>
       </div>
       <span class="lt">${esc(s.clock)}</span>
       <span class="cd">${esc(s.countdown)}</span>
+    </div>`
+    )
+    .join('');
+  if (state.session) {
+    const fresh = m.sessions.find((s) => s.name === state.session.name);
+    if (fresh) {
+      state.session = fresh;
+      if (!$('modalSession').hidden) renderSession();
+    }
+  }
+}
+
+/* ---------------- market session detail ---------------- */
+
+const localTime = (ts) => new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+const localDay = (ts) => new Date(ts).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' });
+const toMinutes = (hhmm) => {
+  const [h, m] = String(hhmm).split(':').map(Number);
+  return h * 60 + (m || 0);
+};
+
+function humanMins(mins) {
+  const d = Math.floor(mins / 1440);
+  const h = Math.floor((mins % 1440) / 60);
+  const m = mins % 60;
+  if (d) return `${d}d ${h}h`;
+  if (h) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+/** Counted from the absolute bell timestamps, so it stays live between data refreshes. */
+function sessionCountdown(s) {
+  if (s.always) return 'Trades non-stop, every day of the year';
+  const target = s.isOpen ? s.nextCloseTs : s.nextOpenTs;
+  if (!target) return s.countdown;
+  const mins = Math.max(0, Math.round((target - Date.now()) / 60000));
+  return `${s.isOpen ? 'Closes in' : 'Opens in'} ${humanMins(mins)}`;
+}
+
+function openSession(index) {
+  const s = ((state.data.market && state.data.market.sessions) || [])[index];
+  if (!s) return;
+  state.session = s;
+  $('modalSession').hidden = false;
+  renderSession();
+}
+
+function renderSession() {
+  const s = state.session;
+  if (!s) return;
+
+  $('seName').textContent = s.name;
+  const where = s.always ? s.country : `${s.city}, ${s.country}`;
+  $('seWhere').textContent = `${where} · ${s.tz}${s.tzOffset ? ` (${s.tzOffset})` : ''}`;
+
+  $('seNow').innerHTML = `
+    <div class="se-clock">
+      <span class="k">Time in ${esc(s.city)}</span>
+      <b>${esc(s.clock)}</b>
+      <span class="s">${esc(s.weekday)}${s.tradingToday || s.always ? '' : ' · not a trading day'}</span>
+    </div>
+    <div class="se-state ${s.isOpen ? 'on' : 'off'}">
+      <b>${s.isOpen ? 'OPEN' : 'CLOSED'}</b>
+      <span>${esc(sessionCountdown(s))}</span>
     </div>`;
-    })
+
+  // The exchange's own midnight-to-midnight day, with the session band and a "now" marker.
+  if (s.always) {
+    $('seBar').innerHTML = '<div class="se-track"><i style="left:0;width:100%"></i></div><div class="se-scale"><em>always open</em></div>';
+  } else {
+    const openM = toMinutes(s.openLabel);
+    const closeM = toMinutes(s.closeLabel);
+    const nowM = toMinutes(s.clock);
+    $('seBar').innerHTML = `<div class="se-track">
+        <i class="${s.isOpen ? 'on' : 'off'}" style="left:${((openM / 1440) * 100).toFixed(2)}%;width:${(((closeM - openM) / 1440) * 100).toFixed(2)}%"></i>
+        <span class="se-nowdot" style="left:${((nowM / 1440) * 100).toFixed(2)}%" title="right now in ${esc(s.city)}"></span>
+      </div>
+      <div class="se-scale"><em>00:00</em><em>06:00</em><em>12:00</em><em>18:00</em><em>24:00</em></div>`;
+  }
+
+  const nextBell = s.isOpen ? s.nextCloseTs : s.nextOpenTs;
+  const cells = [
+    ['Trading days', s.daysLabel, s.always ? 'weekends included' : 'exchange holidays excluded'],
+    ['Opening bell', s.openLabel, s.nextOpenTs ? `${localTime(s.nextOpenTs)} where you are` : 'no opening bell'],
+    ['Closing bell', s.closeLabel, s.nextCloseTs ? `${localTime(s.nextCloseTs)} where you are` : 'never closes'],
+    ['Session length', s.always ? 'Continuous' : humanMins(s.sessionMinutes), s.always ? '24 hours a day' : 'per trading day'],
+    [
+      s.isOpen ? 'Bell rings next' : 'Opens next',
+      s.always ? '—' : nextBell ? localDay(nextBell) : '—',
+      s.always ? 'no schedule' : nextBell ? `${localTime(nextBell)} your time` : ''
+    ],
+    ['Time zone', s.tzOffset || s.tz, s.tz]
+  ];
+
+  $('seGrid').innerHTML = cells
+    .map(([k, v, sub]) => `<div class="se-cell"><span class="k">${esc(k)}</span><b>${esc(v)}</b><span class="s">${esc(sub || '')}</span></div>`)
     .join('');
 }
 
@@ -506,7 +608,7 @@ function renderStatus(meta) {
   if (!meta) return;
   $('stamp').textContent = meta.updatedAt ? `updated ${ago(meta.updatedAt)}` : 'syncing…';
   const errs = meta.errors || [];
-  $('errBar').textContent = errs.length ? `⚠ ${errs.slice(0, 2).join(' · ')}` : '';
+  $('errBar').textContent = errs.length ? errs.slice(0, 2).join(' · ') : '';
 }
 
 function render(patch) {
@@ -567,6 +669,8 @@ async function pickSymbol(row) {
   const news = relatedNews(row);
   $('pickNews').hidden = false;
   $('pickNews').innerHTML = `<div class="pn-head">Recent news on ${esc(shortSym(row.symbol))}</div>${newsListHtml(news)}`;
+  $('pickActions').hidden = false;
+  if (!$('buyChart').hidden) toggleBuyChart(true);
   await fetchBuyPrice();
 }
 
@@ -574,15 +678,32 @@ function resetPick() {
   state.pick = null;
   state.priceInfo = null;
   state.priceManual = false;
+  state.payCur = 'NATIVE';
+  state.payRate = 1;
+  state.charts.buy = null;
   $('picked').hidden = true;
   $('picked').innerHTML = '';
   $('pickNews').hidden = true;
   $('pickNews').innerHTML = '';
+  $('pickActions').hidden = true;
+  $('buyChart').hidden = true;
+  $('btnBuyChart').textContent = 'Show graph';
+  $('payRow').hidden = true;
   $('fAvg').value = '';
   $('fSymbol').value = '';
   $('fSymbol').focus();
   setPriceTag('auto', 'auto');
   updatePreview();
+}
+
+/** The same chart engine as the stock modal, folded into the buy dialog on demand. */
+async function toggleBuyChart(open) {
+  const show = open != null ? open : $('buyChart').hidden;
+  $('buyChart').hidden = !show;
+  $('btnBuyChart').textContent = show ? 'Hide graph' : 'Show graph';
+  if (!show || !state.pick) return;
+  document.querySelectorAll('#bcRange button').forEach((b) => b.classList.toggle('active', b.dataset.r === '1D'));
+  await loadChart('buy', state.pick.symbol, '1D');
 }
 
 function setPriceTag(text, kind) {
@@ -605,7 +726,48 @@ async function fetchBuyPrice() {
   state.priceInfo = info;
   $('fAvg').value = Number(info.price.toFixed(info.price < 10 ? 6 : 2));
   setPriceTag(state.whenMode === 'now' ? 'live price' : info.exact ? 'price at that time' : 'nearest trading time', 'auto');
+  await refreshPayFx();
   updatePreview();
+}
+
+const nativeCur = () => (state.priceInfo && state.priceInfo.currency) || '';
+const payCurrency = () => (state.payCur === 'NATIVE' ? nativeCur() : state.payCur);
+
+/**
+ * A share quoted in dollars can still be bought with rupees — the amount is converted at the
+ * live rate before it is divided by the price, so "₹50,000 of AMZN" gives the right unit count.
+ */
+function showPayRow() {
+  const native = nativeCur();
+  const row = $('payRow');
+  const useful = state.qtyMode === 'amount' && !!native && native !== 'INR';
+  row.hidden = !useful;
+  if (!useful) {
+    state.payCur = 'NATIVE';
+    state.payRate = 1;
+    return;
+  }
+  row.querySelector('[data-pay="NATIVE"]').textContent = `${SYMBOLS[native] || ''} ${native}`.trim();
+  document.querySelectorAll('#payCur button').forEach((b) => b.classList.toggle('active', b.dataset.pay === state.payCur));
+}
+
+async function refreshPayFx() {
+  showPayRow();
+  const native = nativeCur();
+  const pay = payCurrency();
+  if (!native || !pay || pay === native) {
+    state.payRate = 1;
+    $('payFx').textContent = '';
+    return;
+  }
+  $('payFx').textContent = 'converting…';
+  const r = await window.pulse.fx(pay, native).catch(() => null);
+  const rate = r && isFinite(r.rate) && r.rate > 0 ? r.rate : null;
+  state.payRate = rate || 1;
+  const back = rate ? 1 / rate : null;
+  $('payFx').textContent = back
+    ? `${SYMBOLS[native] || native}1 ≈ ${SYMBOLS[pay] || pay}${num(back, back >= 100 ? 2 : 4)}`
+    : 'live rate unavailable — treating it as 1:1';
 }
 
 /** In "by amount" mode the field holds money, not shares — the quantity is derived from the price. */
@@ -613,7 +775,10 @@ function effectiveQty() {
   const raw = parseFloat($('fQty').value);
   const price = parseFloat($('fAvg').value);
   if (!isFinite(raw) || raw <= 0) return NaN;
-  if (state.qtyMode === 'amount') return isFinite(price) && price > 0 ? raw / price : NaN;
+  if (state.qtyMode === 'amount') {
+    const spend = raw * (state.payRate || 1);
+    return isFinite(price) && price > 0 ? spend / price : NaN;
+  }
   return raw;
 }
 
@@ -630,13 +795,17 @@ async function updatePreview() {
     return;
   }
 
-  const cur = (state.priceInfo && state.priceInfo.currency) || '';
+  const cur = nativeCur();
   const sym = SYMBOLS[cur] || '';
   const invested = qty * price;
   const when = state.whenMode === 'now' ? 'right now' : state.priceInfo ? dateLabel(state.priceInfo.at) : 'that date';
+  const pay = payCurrency();
+  const paySym = SYMBOLS[pay] || '';
+  const converted = state.qtyMode === 'amount' && pay && pay !== cur;
   const qtyLine =
     state.qtyMode === 'amount'
-      ? `<b>${sym}${num(invested)}</b> buys <b>≈${num(qty, 4)}</b> shares of <b>${esc(shortSym(state.pick.symbol))}</b>`
+      ? `<b>${paySym}${num(parseFloat($('fQty').value))}</b>${converted ? ` <span class="muted">(${sym}${num(invested)})</span>` : ''}
+         buys <b>≈${num(qty, 4)}</b> shares of <b>${esc(shortSym(state.pick.symbol))}</b>`
       : `Buying <b>${num(qty, qty % 1 ? 4 : 0)}</b> of <b>${esc(shortSym(state.pick.symbol))}</b> = <b>${sym}${num(invested)}</b> invested`;
 
   let line2 = '';
@@ -665,6 +834,7 @@ function setQtyMode(mode) {
     label.firstChild.textContent = 'Quantity ';
     input.placeholder = '10';
   }
+  showPayRow();
 }
 
 /* ---------------- sell flow ---------------- */
@@ -811,7 +981,19 @@ function runSearch(q) {
   }, 220);
 }
 
-/* ---------------- stock detail chart ---------------- */
+/* ---------------- charts ---------------- */
+
+/**
+ * Two charts run at once: the full stock modal and the small one folded into the buy dialog.
+ * They share this engine, so anything added here (axes, crosshair, ranges) appears in both.
+ */
+const CHART_TARGETS = {
+  main: { svg: 'chSvg', tip: 'chTip', box: 'chBox', price: 'chPrice' },
+  buy: { svg: 'bcSvg', tip: 'bcTip', box: 'bcBox', price: 'bcPrice' }
+};
+
+/** Read live from the stylesheet so chart ink follows the active theme. */
+const cssVar = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 
 async function openChart(symbol, name) {
   if (!symbol) return;
@@ -819,20 +1001,21 @@ async function openChart(symbol, name) {
   $('modalChart').hidden = false;
   $('chSym').textContent = shortSym(symbol);
   $('chSub').textContent = name || '';
-  $('chPrice').textContent = 'loading…';
   $('chSvg').innerHTML = '';
   document.querySelectorAll('#chRange button').forEach((b) => b.classList.toggle('active', b.dataset.r === '1D'));
-  const news = relatedNews({ symbol, name });
-  $('chNews').innerHTML = newsListHtml(news);
-  await loadChart('1D');
+  $('chNews').innerHTML = newsListHtml(relatedNews({ symbol, name }));
+  await loadChart('main', symbol, '1D');
 }
 
-async function loadChart(range) {
-  const info = await window.pulse.history(state.chartSym, range).catch(() => null);
+async function loadChart(key, symbol, range) {
+  const t = CHART_TARGETS[key];
+  if (!symbol) return;
+  $(t.price).textContent = 'loading…';
+  const info = await window.pulse.history(symbol, range).catch(() => null);
   if (!info || info.error || !info.points || !info.points.length) {
-    $('chPrice').innerHTML = '<span class="muted">No chart data for this range.</span>';
-    $('chSvg').innerHTML = '';
-    state.chart = null;
+    $(t.price).innerHTML = '<span class="muted">No chart data for this range.</span>';
+    $(t.svg).innerHTML = '';
+    state.charts[key] = null;
     return;
   }
   const pts = info.points;
@@ -840,9 +1023,9 @@ async function loadChart(range) {
   const last = pts[pts.length - 1].c;
   const first = pts[0].c;
   const chg = first ? ((last - first) / first) * 100 : 0;
-  $('chPrice').innerHTML = `<b>${cur}${num(last, last > 1000 ? 0 : 2)}</b> <span class="${cls(chg)}">${pctS(chg, 2)}</span> <span class="muted">(${esc(range)})</span>`;
-  state.chart = { pts, cur, range, up: chg >= 0 };
-  drawChart(pts, chg >= 0, cur, range);
+  $(t.price).innerHTML = `<b>${cur}${num(last, last > 1000 ? 0 : 2)}</b> <span class="${cls(chg)}">${pctS(chg, 2)}</span> <span class="muted">(${esc(range)})</span>`;
+  state.charts[key] = { pts, cur, range, symbol, up: chg >= 0 };
+  drawChart(key);
 }
 
 /** Grid steps rounded to 1/2/5 × 10ⁿ so axis labels read as round numbers. */
@@ -869,10 +1052,8 @@ function timeLabel(ts, spanMs) {
 
 const CH = { w: 700, h: 260, padR: 54, padB: 24, padT: 10 };
 
-function drawChart(pts, up, cur, range) {
-  const { w, h, padR, padB, padT } = CH;
-  const plotW = w - padR;
-  const plotH = h - padB - padT;
+/** The rounded price band, computed once so the drawing and the crosshair share one y scale. */
+function chartBand(pts) {
   const closes = pts.map((p) => p.c);
   let lo = Math.min(...closes);
   let hi = Math.max(...closes);
@@ -884,54 +1065,64 @@ function drawChart(pts, up, cur, range) {
   const step = niceStep(hi - lo, 4);
   const gLo = Math.floor(lo / step) * step;
   const gHi = Math.ceil(hi / step) * step;
-  const rng = gHi - gLo || 1;
+  return { step, gLo, gHi, rng: gHi - gLo || 1 };
+}
 
-  const x = (i) => (i * plotW) / (pts.length - 1 || 1);
+function drawChart(key) {
+  const c = state.charts[key];
+  if (!c) return;
+  const { w, h, padR, padB, padT } = CH;
+  const plotW = w - padR;
+  const plotH = h - padB - padT;
+  const { step, gLo, gHi, rng } = chartBand(c.pts);
+
+  const x = (i) => (i * plotW) / (c.pts.length - 1 || 1);
   const y = (v) => padT + plotH - ((v - gLo) / rng) * plotH;
 
-  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.c).toFixed(1)}`).join(' ');
-  const color = up ? '#17e29a' : '#ff4d6d';
+  const d = c.pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.c).toFixed(1)}`).join(' ');
+  const color = cssVar(c.up ? '--up' : '--down', c.up ? '#17e29a' : '#ff4d6d');
+  const last = c.pts[c.pts.length - 1];
 
   // Money axis, drawn down the right so the price sits beside the latest point.
   let grid = '';
   for (let v = gLo; v <= gHi + 1e-9; v += step) {
     const yy = y(v);
     grid += `<line class="ch-grid" x1="0" y1="${yy.toFixed(1)}" x2="${plotW}" y2="${yy.toFixed(1)}"/>
-      <text class="ch-axis y" x="${plotW + 6}" y="${(yy + 3.5).toFixed(1)}">${esc(cur)}${num(v, v >= 1000 ? 0 : 2)}</text>`;
+      <text class="ch-axis y" x="${plotW + 6}" y="${(yy + 3.5).toFixed(1)}">${esc(c.cur)}${num(v, v >= 1000 ? 0 : 2)}</text>`;
   }
 
   // Time axis, spaced so labels never collide regardless of how many points came back.
-  const spanMs = pts[pts.length - 1].t - pts[0].t;
-  const ticks = Math.min(6, pts.length);
+  const spanMs = last.t - c.pts[0].t;
+  const ticks = Math.min(6, c.pts.length);
   let xAxis = '';
   for (let t = 0; t < ticks; t++) {
-    const i = Math.round((t * (pts.length - 1)) / Math.max(1, ticks - 1));
+    const i = Math.round((t * (c.pts.length - 1)) / Math.max(1, ticks - 1));
     const xx = x(i);
     const anchor = t === 0 ? 'start' : t === ticks - 1 ? 'end' : 'middle';
     xAxis += `<line class="ch-grid" x1="${xx.toFixed(1)}" y1="${padT}" x2="${xx.toFixed(1)}" y2="${padT + plotH}"/>
-      <text class="ch-axis x" style="text-anchor:${anchor}" x="${xx.toFixed(1)}" y="${h - 7}">${esc(timeLabel(pts[i].t, spanMs))}</text>`;
+      <text class="ch-axis x" style="text-anchor:${anchor}" x="${xx.toFixed(1)}" y="${h - 7}">${esc(timeLabel(c.pts[i].t, spanMs))}</text>`;
   }
 
-  $('chSvg').innerHTML = `<defs><linearGradient id="chg" x1="0" y1="0" x2="0" y2="1">
+  const gid = `chg-${key}`;
+  $(CHART_TARGETS[key].svg).innerHTML = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="${color}" stop-opacity="0.35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/>
     </linearGradient></defs>
     ${grid}${xAxis}
-    <path d="${d} L${x(pts.length - 1).toFixed(1)},${padT + plotH} L0,${padT + plotH} Z" fill="url(#chg)"/>
-    <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="${x(pts.length - 1).toFixed(1)}" cy="${y(closes[closes.length - 1]).toFixed(1)}" r="3.5" fill="${color}"/>
-    <g id="chCross" style="display:none">
-      <line class="ch-cross" id="chCrossX" x1="0" y1="${padT}" x2="0" y2="${padT + plotH}"/>
-      <circle id="chCrossDot" r="4" fill="${color}" stroke="var(--bg)" stroke-width="2"/>
+    <path class="ch-area" d="${d} L${x(c.pts.length - 1).toFixed(1)},${padT + plotH} L0,${padT + plotH} Z" fill="url(#${gid})"/>
+    <path class="ch-line" d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle class="ch-dot" cx="${x(c.pts.length - 1).toFixed(1)}" cy="${y(last.c).toFixed(1)}" r="3.5" fill="${color}"/>
+    <g class="ch-cross-g" style="display:none">
+      <line class="ch-cross" x1="0" y1="${padT}" x2="0" y2="${padT + plotH}"/>
+      <circle class="ch-cross-dot" r="4" fill="${color}" stroke="var(--bg-1)" stroke-width="2"/>
     </g>`;
 }
 
 /** Pointer position → nearest candle, reported as money and moment in one card. */
-function chartHover(e) {
-  const c = state.chart;
-  const box = $('chBox');
-  const svg = $('chSvg');
-  const tip = $('chTip');
-  const cross = document.getElementById('chCross');
+function chartHover(key, e) {
+  const c = state.charts[key];
+  const t = CHART_TARGETS[key];
+  const svg = $(t.svg);
+  const cross = svg && svg.querySelector('.ch-cross-g');
   if (!c || !cross) return;
 
   const r = svg.getBoundingClientRect();
@@ -943,29 +1134,21 @@ function chartHover(e) {
   const offX = (r.width - w * scale) / 2;
   const offY = (r.height - h * scale) / 2;
   const vx = (e.clientX - r.left - offX) / scale;
-  if (vx < 0 || vx > plotW) return chartHoverOut();
+  if (vx < 0 || vx > plotW) return chartHoverOut(key);
 
   const i = Math.max(0, Math.min(c.pts.length - 1, Math.round((vx / plotW) * (c.pts.length - 1))));
   const p = c.pts[i];
-
-  const closes = c.pts.map((q) => q.c);
-  let lo = Math.min(...closes);
-  let hi = Math.max(...closes);
-  if (hi - lo < 1e-9) {
-    hi += Math.abs(hi) * 0.005 || 1;
-    lo -= Math.abs(lo) * 0.005 || 1;
-  }
-  const step = niceStep(hi - lo, 4);
-  const gLo = Math.floor(lo / step) * step;
-  const gHi = Math.ceil(hi / step) * step;
+  const { gLo, rng } = chartBand(c.pts);
   const px = (i * plotW) / (c.pts.length - 1 || 1);
-  const py = padT + plotH - ((p.c - gLo) / (gHi - gLo || 1)) * plotH;
+  const py = padT + plotH - ((p.c - gLo) / rng) * plotH;
 
   cross.style.display = '';
-  document.getElementById('chCrossX').setAttribute('x1', px);
-  document.getElementById('chCrossX').setAttribute('x2', px);
-  document.getElementById('chCrossDot').setAttribute('cx', px);
-  document.getElementById('chCrossDot').setAttribute('cy', py);
+  const line = cross.querySelector('.ch-cross');
+  const dot = cross.querySelector('.ch-cross-dot');
+  line.setAttribute('x1', px);
+  line.setAttribute('x2', px);
+  dot.setAttribute('cx', px);
+  dot.setAttribute('cy', py);
 
   const first = c.pts[0].c;
   const move = first ? ((p.c - first) / first) * 100 : 0;
@@ -974,20 +1157,225 @@ function chartHover(e) {
     day: '2-digit', month: 'short', year: '2-digit',
     ...(spanMs <= 10 * 864e5 ? { hour: '2-digit', minute: '2-digit' } : {})
   });
+  const tip = $(t.tip);
   tip.hidden = false;
   tip.innerHTML = `<b>${esc(c.cur)}${num(p.c, p.c >= 1000 ? 0 : 2)}</b><span>${esc(when)}</span>
     <span class="${cls(move)}"> · ${pctS(move, 2)}</span>`;
 
-  const boxR = box.getBoundingClientRect();
+  const boxR = $(t.box).getBoundingClientRect();
   const left = offX + px * scale + (r.left - boxR.left);
   tip.style.left = `${Math.max(52, Math.min(boxR.width - 52, left))}px`;
   tip.style.top = `${offY + py * scale + (r.top - boxR.top) - 10}px`;
 }
 
-function chartHoverOut() {
-  const cross = document.getElementById('chCross');
+function chartHoverOut(key) {
+  const t = CHART_TARGETS[key];
+  const svg = $(t.svg);
+  const cross = svg && svg.querySelector('.ch-cross-g');
   if (cross) cross.style.display = 'none';
-  $('chTip').hidden = true;
+  $(t.tip).hidden = true;
+}
+
+/* ---------------- pdf statement ---------------- */
+
+const stmtMoney = (v, cur) =>
+  v == null || !isFinite(v)
+    ? '—'
+    : `${v < 0 ? '-' : ''}${SYMBOLS[cur] || `${cur} `}${Math.abs(v).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const stmtDate = (ts) => (ts ? new Date(ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—');
+
+/**
+ * A self-contained document handed to Chromium's own PDF printer.
+ *
+ * It carries ink-on-paper styling on purpose: a statement gets printed and filed, so it must
+ * not inherit whatever theme the app happens to be wearing, and it must survive being opened
+ * with no stylesheet, no fonts and no scripts available.
+ */
+function buildStatementHtml() {
+  const pf = state.data.portfolio || { totals: {}, rows: [], trades: [] };
+  const t = pf.totals || {};
+  const cur = t.baseCurrency || state.base;
+  const rows = pf.rows || [];
+  const trades = pf.trades || [];
+  const m = (v) => stmtMoney(v, cur);
+  const sign = (v) => (v > 0 ? 'pos' : v < 0 ? 'neg' : '');
+
+  const summary = [
+    ['Net worth', m(t.netWorth), `${t.positions || 0} open position${t.positions === 1 ? '' : 's'}`],
+    ['Total put in', m(t.totalCost), 'held plus already sold'],
+    ['Market value', m(t.value), t.cash ? `plus ${m(t.cash)} cash` : 'open positions only'],
+    ['Money made', m(t.totalPnl), pctS(t.totalPnlPct)],
+    ['On paper', m(t.unrealised), `${pctS(t.unrealisedPct)} · still held`],
+    ['Banked', m(t.realised), `${t.tradeCount || 0} sale${t.tradeCount === 1 ? '' : 's'} · ${t.winRate != null ? Math.round(t.winRate) : 0}% won`]
+  ];
+
+  const holdingRows = rows.length
+    ? rows
+        .map(
+          (r) => `<tr>
+        <td class="mono">${esc(shortSym(r.symbol))}</td>
+        <td>${esc(r.name || '')}</td>
+        <td class="n">${num(r.qty, r.qty % 1 ? 4 : 0)}</td>
+        <td class="n">${num(r.avgPrice)}</td>
+        <td class="n">${num(r.price)}</td>
+        <td class="n">${m(r.invested)}</td>
+        <td class="n">${m(r.value)}</td>
+        <td class="n ${sign(r.pnl)}">${m(r.pnl)}</td>
+        <td class="n ${sign(r.pnl)}">${pctS(r.pnlPct, 1)}</td>
+        <td class="n">${num(r.weight, 1)}%</td>
+        <td>${esc(stmtDate(r.buyTs || (r.buyDate ? Date.parse(r.buyDate) : null)))}</td>
+        <td class="n">${r.heldDays != null ? `${r.heldDays}d` : '—'}</td>
+      </tr>`
+        )
+        .join('')
+    : '<tr><td colspan="12" class="empty">No open holdings.</td></tr>';
+
+  const tradeRows = trades.length
+    ? trades
+        .map(
+          (x) => `<tr>
+        <td>${esc(stmtDate(x.ts))}</td>
+        <td class="mono">${esc(shortSym(x.symbol))}</td>
+        <td>${esc(x.name || '')}</td>
+        <td class="n">${num(x.qty, x.qty % 1 ? 4 : 0)}</td>
+        <td class="n">${num(x.buyPrice)}</td>
+        <td class="n">${num(x.sellPrice)}</td>
+        <td class="n">${x.fees ? m(x.fees) : '—'}</td>
+        <td class="n">${m(x.cost)}</td>
+        <td class="n">${m(x.proceeds)}</td>
+        <td class="n ${sign(x.pnl)}">${m(x.pnl)}</td>
+        <td class="n ${sign(x.pnl)}">${pctS(x.pnlPct, 1)}</td>
+      </tr>`
+        )
+        .join('')
+    : '<tr><td colspan="11" class="empty">Nothing has been sold yet.</td></tr>';
+
+  const generated = new Date().toLocaleString('en-GB', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8" /><title>PulseDesk portfolio statement</title>
+<style>
+  @page { size: A4; }
+  /* Paper is white wherever this opens: a viewer in dark mode must not repaint it. */
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font-family: 'Segoe UI', Helvetica, Arial, sans-serif; color: #12162a; background: #fff; margin: 0; padding: 14px; font-size: 10px; }
+  h1 { font-size: 20px; letter-spacing: 3px; margin: 0; }
+  h1 b { color: #4b32d6; }
+  h2 { font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase; margin: 22px 0 7px; color: #4b32d6;
+       border-bottom: 1.5px solid #4b32d6; padding-bottom: 4px; }
+  .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2.5px solid #12162a; padding-bottom: 9px; }
+  .head .meta { text-align: right; font-size: 9.5px; color: #5a6180; line-height: 1.6; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .card { border: 1px solid #d3d8ea; border-radius: 7px; padding: 9px 11px; background: #f6f7fc; }
+  .card .k { font-size: 8px; letter-spacing: 1.2px; text-transform: uppercase; color: #6b7395; display: block; }
+  .card .v { font-size: 16px; font-weight: 700; display: block; margin: 2px 0 1px; }
+  .card .s { font-size: 8.5px; color: #6b7395; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 8px; letter-spacing: 0.9px; text-transform: uppercase; color: #5a6180;
+       border-bottom: 1px solid #c8cee4; padding: 5px 5px; }
+  td { padding: 5px; border-bottom: 1px solid #edeff7; font-size: 9.5px; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.mono { font-weight: 700; letter-spacing: 0.4px; }
+  td.empty { text-align: center; color: #8b92ad; padding: 16px; }
+  tr { page-break-inside: avoid; }
+  .pos { color: #067a4e; font-weight: 700; }
+  .neg { color: #c81e42; font-weight: 700; }
+  tfoot td { border-top: 1.5px solid #12162a; border-bottom: none; font-weight: 700; font-size: 10px; }
+  .foot { margin-top: 24px; border-top: 1px solid #d3d8ea; padding-top: 9px; font-size: 8.5px; color: #6b7395; line-height: 1.7; }
+</style></head>
+<body>
+  <div class="head">
+    <div>
+      <h1>PULSE<b>DESK</b></h1>
+      <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#5a6180;margin-top:3px">Portfolio statement</div>
+    </div>
+    <div class="meta">
+      Generated ${esc(generated)}<br/>
+      Reported in <b>${esc(cur)}</b><br/>
+      ${rows.length} open holding${rows.length === 1 ? '' : 's'} · ${trades.length} closed trade${trades.length === 1 ? '' : 's'}
+    </div>
+  </div>
+
+  <div class="cards">
+    ${summary.map(([k, v, s]) => `<div class="card"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span><span class="s">${esc(s)}</span></div>`).join('')}
+  </div>
+
+  <h2>Open holdings</h2>
+  <table>
+    <thead><tr>
+      <th>Ticker</th><th>Company</th><th class="n">Qty</th><th class="n">Avg buy</th><th class="n">Price now</th>
+      <th class="n">Invested</th><th class="n">Value</th><th class="n">P&amp;L</th><th class="n">P&amp;L %</th>
+      <th class="n">Weight</th><th>Bought</th><th class="n">Held</th>
+    </tr></thead>
+    <tbody>${holdingRows}</tbody>
+    <tfoot><tr>
+      <td colspan="5">Total</td>
+      <td class="n">${m(t.invested)}</td><td class="n">${m(t.value)}</td>
+      <td class="n ${sign(t.unrealised)}">${m(t.unrealised)}</td>
+      <td class="n ${sign(t.unrealised)}">${pctS(t.unrealisedPct, 1)}</td>
+      <td class="n">100%</td><td colspan="2"></td>
+    </tr></tfoot>
+  </table>
+
+  <h2>Everything sold</h2>
+  <table>
+    <thead><tr>
+      <th>Sold on</th><th>Ticker</th><th>Company</th><th class="n">Qty</th><th class="n">Buy</th><th class="n">Sell</th>
+      <th class="n">Charges</th><th class="n">Cost</th><th class="n">Proceeds</th><th class="n">P&amp;L</th><th class="n">P&amp;L %</th>
+    </tr></thead>
+    <tbody>${tradeRows}</tbody>
+    <tfoot><tr>
+      <td colspan="7">Total</td>
+      <td class="n">${m(t.realisedCost)}</td>
+      <td class="n">${m((t.realisedCost || 0) + (t.realised || 0))}</td>
+      <td class="n ${sign(t.realised)}">${m(t.realised)}</td>
+      <td class="n ${sign(t.realised)}">${pctS(t.realisedPct, 1)}</td>
+    </tr></tfoot>
+  </table>
+
+  <div class="foot">
+    Prices are the last values PulseDesk fetched and may lag the exchange. Costs are weighted averages across every
+    purchase of a ticker; a partial sale leaves the remaining units on their original cost. Amounts are converted to
+    ${esc(cur)} at the exchange rate in force when this statement was produced.<br/>
+    This document is a record of what you entered — it is not a broker contract note, not a tax document and not
+    investment advice.<br/>
+    <b>PulseDesk</b> · created by Dheerav Tandon · your holdings are stored only on your own device.
+  </div>
+</body></html>`;
+}
+
+async function saveStatement() {
+  const btn = $('btnStatement');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Building…';
+  try {
+    const stamp = new Date().toISOString().slice(0, 10);
+    const res = await window.pulse.exportPdf(buildStatementHtml(), `PulseDesk-statement-${stamp}.pdf`);
+    if (res && res.error) alert(`Could not build the statement: ${res.error}`);
+  } catch (err) {
+    alert(err.message || 'Could not build the statement.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+
+/* ---------------- theme ---------------- */
+
+function applyTheme(theme, persist) {
+  state.theme = theme === 'light' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = state.theme;
+  const btn = $('btnTheme');
+  btn.textContent = state.theme === 'light' ? '◑' : '◐';
+  btn.title = state.theme === 'light' ? 'Switch to dark' : 'Switch to light';
+  // Chart ink is read from the stylesheet, so anything already drawn needs redrawing.
+  Object.keys(state.charts).forEach((k) => state.charts[k] && drawChart(k));
+  if (persist) window.pulse.settings.set({ theme: state.theme });
 }
 
 /* ---------------- events ---------------- */
@@ -998,6 +1386,7 @@ function bind() {
     await window.pulse.refresh();
     e.currentTarget.classList.remove('spin');
   });
+  $('btnTheme').addEventListener('click', () => applyTheme(state.theme === 'light' ? 'dark' : 'light', true));
   $('btnMin').addEventListener('click', () => window.pulse.win.minimize());
   $('btnHide').addEventListener('click', () => window.pulse.win.hide());
   $('btnFull').addEventListener('click', () => window.pulse.win.toggleMaximize());
@@ -1094,9 +1483,38 @@ function bind() {
     if (pf) renderPortfolio(pf);
   });
 
+  $('btnStatement').addEventListener('click', saveStatement);
+
+  // market clocks
+  $('sessions').addEventListener('click', (e) => {
+    const tile = e.target.closest('.ses');
+    if (tile) openSession(Number(tile.dataset.ses));
+  });
+  $('btnCloseSession').addEventListener('click', () => ($('modalSession').hidden = true));
+  $('btnCloseSession2').addEventListener('click', () => ($('modalSession').hidden = true));
+
   // add holding
   $('btnAdd').addEventListener('click', () => openAdd());
   $('btnCancelAdd').addEventListener('click', () => ($('modalAdd').hidden = true));
+
+  $('btnBuyChart').addEventListener('click', () => toggleBuyChart());
+  $('bcRange').addEventListener('click', (e) => {
+    const r = e.target.dataset.r;
+    if (!r || !state.pick) return;
+    document.querySelectorAll('#bcRange button').forEach((b) => b.classList.toggle('active', b === e.target));
+    loadChart('buy', state.pick.symbol, r);
+  });
+  $('bcBox').addEventListener('pointermove', (e) => chartHover('buy', e));
+  $('bcBox').addEventListener('pointerleave', () => chartHoverOut('buy'));
+
+  $('payCur').addEventListener('click', async (e) => {
+    const pay = e.target.dataset.pay;
+    if (!pay) return;
+    state.payCur = pay;
+    document.querySelectorAll('#payCur button').forEach((b) => b.classList.toggle('active', b.dataset.pay === pay));
+    await refreshPayFx();
+    updatePreview();
+  });
 
   $('fSymbol').addEventListener('input', (e) => runSearch(e.target.value));
   $('fSymbol').addEventListener('keydown', (e) => {
@@ -1157,11 +1575,11 @@ function bind() {
     const qty = effectiveQty();
     const avgPrice = parseFloat($('fAvg').value);
     if (!state.pick) {
-      $('investPreview').innerHTML = '<span style="color:var(--down)">⚠ Pick a company from the list first.</span>';
+      $('investPreview').innerHTML = '<span class="warn">Pick a company from the list first.</span>';
       return;
     }
     if (!isFinite(qty) || qty <= 0 || !isFinite(avgPrice) || avgPrice < 0) {
-      $('investPreview').innerHTML = `<span style="color:var(--down)">⚠ ${state.qtyMode === 'amount' ? 'Amount and buy price are both needed.' : 'Quantity and buy price are both needed.'}</span>`;
+      $('investPreview').innerHTML = `<span class="warn">${state.qtyMode === 'amount' ? 'Amount and buy price are both needed.' : 'Quantity and buy price are both needed.'}</span>`;
       return;
     }
     const pf = await window.pulse.portfolio.add({
@@ -1234,7 +1652,7 @@ function bind() {
     if (!isFinite(qty) || qty <= 0) return alert('Enter how many you sold.');
     if (qty - row.qty > 1e-9) return alert(`You only hold ${num(row.qty, 4)} of ${shortSym(row.symbol)}.`);
     try {
-      const pf = await window.pulse.portfolio.sell(row.id, { qty, price, fees, ts: sellTimestamp() });
+      const pf = await window.pulse.portfolio.sell(row.id, { qty, price, fees, ts: sellTimestamp(), currency: row.currency });
       if (pf) renderPortfolio(pf);
       $('modalSell').hidden = true;
     } catch (err) {
@@ -1274,12 +1692,12 @@ function bind() {
     const r = e.target.dataset.r;
     if (!r) return;
     document.querySelectorAll('#chRange button').forEach((b) => b.classList.toggle('active', b === e.target));
-    loadChart(r);
+    loadChart('main', state.chartSym, r);
   });
   $('btnCloseChart').addEventListener('click', () => ($('modalChart').hidden = true));
   $('btnCloseChart2').addEventListener('click', () => ($('modalChart').hidden = true));
-  $('chBox').addEventListener('pointermove', chartHover);
-  $('chBox').addEventListener('pointerleave', chartHoverOut);
+  $('chBox').addEventListener('pointermove', (e) => chartHover('main', e));
+  $('chBox').addEventListener('pointerleave', () => chartHoverOut('main'));
   $('btnAddFromChart').addEventListener('click', () => {
     const sym = state.chartSym;
     $('modalChart').hidden = true;
@@ -1293,6 +1711,7 @@ function bind() {
       $('modalChart').hidden = true;
       $('modalHypeAll').hidden = true;
       $('modalSell').hidden = true;
+      $('modalSession').hidden = true;
     }
     if (e.key === 'F11') {
       e.preventDefault();
@@ -1300,7 +1719,7 @@ function bind() {
     }
   });
 
-  [$('modalAdd'), $('modalSet'), $('modalChart'), $('modalHypeAll'), $('modalSell')].forEach((m) =>
+  [$('modalAdd'), $('modalSet'), $('modalChart'), $('modalHypeAll'), $('modalSell'), $('modalSession')].forEach((m) =>
     m.addEventListener('click', (e) => {
       if (e.target === m) m.hidden = true;
     })
@@ -1311,6 +1730,11 @@ function clock() {
   const tick = () => {
     $('clock').textContent = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     if (state.data.meta) renderStatus(state.data.meta);
+    // Bell countdowns run off absolute timestamps, so they tick without waiting for a refresh.
+    if (state.session && !$('modalSession').hidden) {
+      const el = $('seNow').querySelector('.se-state span');
+      if (el) el.textContent = sessionCountdown(state.session);
+    }
   };
   tick();
   setInterval(tick, 1000);
@@ -1321,6 +1745,7 @@ function clock() {
   clock();
   const s = await window.pulse.settings.get();
   state.settings = s;
+  applyTheme(s.theme || 'dark', false);
   if (s.compact) document.body.classList.add('compact');
   window.pulse.onUpdate(render);
   const initial = await window.pulse.get();
