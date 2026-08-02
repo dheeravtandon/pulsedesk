@@ -2,10 +2,10 @@
 
 > **Free · no login · nothing stored on a server.** Created by **Dheerav Tandon**.
 >
-> 📱 **Use it now:** <https://dheeravtandon.github.io/pulsedesk/> — open on your phone and tap *Add to Home Screen*
-> 💻 **Windows app:** <https://github.com/dheeravtandon/pulsedesk/releases/latest>
-> 🧭 **New here?** [INSTALL.md](INSTALL.md) — installing on phone and PC, step by step
-> 🚀 **Publishing it?** [HOW-TO-PUBLISH.md](HOW-TO-PUBLISH.md) — click-by-click, no terminal needed
+> **Use it now:** <https://dheeravtandon.github.io/pulsedesk/> — open on your phone and tap *Add to Home Screen*
+> **Windows app:** <https://github.com/dheeravtandon/pulsedesk/releases/latest>
+> **New here?** [INSTALL.md](INSTALL.md) — installing on phone and PC, step by step
+> **Publishing it?** [HOW-TO-PUBLISH.md](HOW-TO-PUBLISH.md) — click-by-click, no terminal needed
 
 **Document ID:** PD-HB-001 · **Version:** 1.0 · **Date:** 2026-08-01 · **Prepared by:** Dheerav Tandon
 **Status:** Living · **Classification:** Internal
@@ -15,7 +15,7 @@
 
 ## What it is
 
-A frameless Electron widget (optionally always-on-top) that keeps one screen of live market context in view: the five most-hyped stocks (with a show-all view of everything scanned), your portfolio P&L, forty market headlines each carrying a rise/fall call, the ten hardest-pumping crypto pairs of the last five hours, popular & steady large caps by sector, popular Indian mutual fund NAVs, a price chart for any listed stock, and market clocks for six financial hubs.
+A frameless Electron widget (optionally always-on-top) that keeps one screen of live market context in view: the five most-hyped stocks (with a show-all view of everything scanned), your portfolio P&L with a printable PDF statement, forty market headlines each carrying a rise/fall call, the ten hardest-pumping crypto pairs of the last five hours, popular & steady large caps by sector, popular Indian mutual fund NAVs, a price chart for any listed stock, and clickable market clocks carrying each exchange's full trading schedule. Dark and light themes, no emoji anywhere.
 
 ## Why it exists
 
@@ -75,8 +75,12 @@ Retail traders juggle a broker app, two news sites and a crypto exchange tab. Pu
 - **Hype score (0–100)** — `0.45 × volume-vs-20-day-average + 0.35 × |day move| + 0.20 × news mentions`, each min-max normalised across the candidate set. Universe = Yahoo trending ∪ curated US/India liquid names ∪ your holdings ∪ tickers named in today's headlines.
 - **News direction** — a market-specific lexicon (`sentiment.js`) with negation handling, hedge damping and percentage-magnitude weighting. Output is `RISE` / `FALL` / `FLAT` plus a confidence percentage. It is a headline-tone classifier, not a price forecast.
 - **Crypto pump** — Binance rolling-window ticker with `windowSize=5h`, restricted to USDT pairs above $3 M of 24 h quote volume, leveraged and stablecoin pairs excluded.
-- **Portfolio** — per-holding `invested = qty × avg price`, `value = qty × live price`, both converted to your base currency at the live FX cross. Day P&L uses previous close. Realised P&L is booked when a holding is removed with a sell price. Quantity can be entered directly or derived from a money amount (`qty = amount ÷ price`).
-- **Market pulse** — blends advance/decline ratio, average move, VIX band, news skew and Fear & Greed into a −100…+100 mood score. Each exchange also states plainly whether it's open now or closed, with a closes-in / opens-in countdown.
+- **Portfolio** — per-holding `invested = qty × avg price`, `value = qty × live price`, both converted to your base currency at the live FX cross. Realised P&L is booked by the sell dialog, which records the currency the trade happened in so a closed dollar position converts correctly. Quantity can be entered directly or derived from a money amount (`qty = amount ÷ price`), and that amount may be typed in a different currency from the one the share is quoted in.
+- **Day P&L** — measured from the previous close, *except* for a position opened today, which is measured from what was actually paid. Charging a position the whole session's move before it existed is how a two-minute-old buy ends up reported as already down for the day.
+- **FX crosses** — both directions of a pair are quoted to four significant figures, so the small-number side loses precision (`INRUSD=X` reads 0.0105 against `USDINR=X` at 95.39). Any rate below 0.1 is taken from the inverse pair instead.
+- **PDF statement** — the renderer builds a self-contained ink-on-paper HTML document and Chromium's own `printToPDF` turns it into vector PDF: summary totals, every open holding, every closed trade, both with footers. No PDF library, and the portfolio never leaves the machine. On the web build the same document goes to the browser's print dialog, where every platform offers *Save as PDF*.
+- **Market pulse** — blends advance/decline ratio, average move, VIX band, news skew and Fear & Greed into a −100…+100 mood score.
+- **Market clocks** — each exchange states plainly whether it's open now or closed, with a countdown that skips non-trading days (a Saturday afternoon counts through to Monday, not to "tomorrow"). Click one for its trading days, opening and closing bells in both local and exchange time, session length and the next bell. Bell instants are derived from the exchange's own current UTC offset, so DST needs no special case.
 - **Mutual funds** — fourteen well-known direct-growth schemes pinned by their permanent AMFI scheme code (several were renamed by their AMC over the years, so name search alone isn't reliable); NAV history is fetched once and cached, and day/month/year change is derived from the dated NAV series.
 - **Stock detail chart** — click any listed stock for a 1D/5D/1M/6M/1Y/5Y price chart plus the most recent related headlines, matched from the already-fetched news wire by ticker or company name.
 - **"Likely" calls** — hype rows and the all-scanned list carry a plain-English momentum read (e.g. "Likely to keep rising") from day-move plus volume ratio; every predictive card ends with a not-investment-advice line.
@@ -107,9 +111,15 @@ npm run build
 | Always on top, opacity, click-through, all-desktops | Tray right-click menu, or the ⚙ settings panel |
 | Compact mode | ▤ button — two columns, hides the allocation donut |
 | Full screen | **⛶** button or **F11** |
+| Light / dark theme | **◐** button in the title bar — remembered across restarts |
 | Add a holding | **+ Add holding** → type a company name → pick when you bought → price fills itself in → recent headlines on that company show automatically |
 | Buy by amount instead of shares | **By amount invested** toggle in the add-holding dialog — enter money, quantity is derived from the price |
+| Buy a foreign share with rupees | With **By amount invested** on, the **₹ INR / native** toggle converts your amount at the live cross before working out the units |
+| Chart the share before buying | **Show graph** in the add-holding dialog — the full chart with ranges, axes and hover readout, inline |
+| Sell or reduce a holding | Hover a holding → **Sell** → by quantity, by money received, or everything; part-sales leave the rest on its original cost |
+| PDF statement of everything | **Statement** in the portfolio header — summary, every open holding, every closed trade, saved wherever you choose and opened for you |
 | See a stock's price history | Click any stock row (hype, popular, a holding) → 1D/5D/1M/6M/1Y/5Y chart with recent news |
+| An exchange's full trading schedule | Click any market clock — trading days, both bells in local and exchange time, session length, next bell |
 | Filter popular stocks by sector, funds by category | Dropdowns in the **Popular & Steady** and **Mutual Funds** card headers |
 | Base currency | **₹ INR / $ USD** toggle, or the dropdown for EUR/GBP/AED/JPY |
 

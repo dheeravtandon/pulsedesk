@@ -4,14 +4,14 @@ Free. No account. Nothing you type in ever leaves your device.
 
 ---
 
-## 📱 On your phone (Android or iPhone)
+## On your phone (Android or iPhone)
 
 There is no app store download — it installs straight from the browser and behaves exactly like a normal app afterwards.
 
 **Android (Chrome)**
 
 1. Open **https://dheeravtandon.github.io/pulsedesk/**
-2. An **⬇ Install app** button appears at the bottom right — tap it.
+2. An **Install app** button appears at the bottom right — tap it.
 3. Tap **Install** on the popup.
 4. PulseDesk is now on your home screen with its own icon.
 
@@ -28,7 +28,7 @@ Open it from the home-screen icon and it fills the whole screen — no address b
 
 ---
 
-## 💻 On a Windows PC
+## On a Windows PC
 
 **Option 1 — the installer (recommended)**
 
@@ -61,11 +61,11 @@ Clicking **✕** only hides the window to the tray — the app keeps running. To
 
 ---
 
-## 🖥️ Using the desktop app
+## Using the desktop app
 
 | What you want | How |
 |---|---|
-| Keep it floating above everything | It already does. Turn it off in the tray menu → *Always on top* |
+| Keep it floating above everything | Off by default — turn it on in the tray menu → *Always on top* |
 | Hide or show it instantly | **Ctrl + Alt + P** |
 | Refresh right now | **Ctrl + Alt + R** |
 | Full screen | The **⛶** button, or **F11** |
@@ -76,18 +76,38 @@ Clicking **✕** only hides the window to the tray — the app keeps running. To
 
 ---
 
-## 💼 Adding your holdings
+## Adding your holdings
 
 1. Click **+ Add holding**.
 2. Start typing a company name — `reliance`, `tata`, `apple`, `bitcoin`. A list appears; click the right one. NSE shares end in **.NS**, BSE in **.BO**. Recent headlines about that company show up automatically so you have context before you buy.
-3. Choose when you bought it:
+3. Want to see how it has moved first? Click **Show graph** — the full chart appears inside the dialog, with 1D through 5Y and a hover readout.
+4. Choose when you bought it:
    - **Right now** — uses the live price
    - **Pick date & time** — uses the actual market price at that moment
-4. The buy price fills in by itself. Type over it if your price was different (brokerage, different lot, etc.).
-5. Choose **By quantity** if you know how many shares, or **By amount invested** if you only remember how much money you put in — the app works out the shares for you.
-6. **Save holding.**
+5. The buy price fills in by itself. Type over it if your price was different (brokerage, different lot, etc.).
+6. Choose **By quantity** if you know how many shares, or **By amount invested** if you only remember how much money you put in — the app works out the shares for you.
+7. Buying an American share with rupees? In **By amount invested**, flip the currency toggle to **₹ INR** and type the rupee amount. It converts at the live rate and tells you how many shares that buys.
+8. **Save holding.**
 
 Switch between **₹ INR** and **$ USD** with the toggle in the portfolio header — everything converts at the live exchange rate.
+
+## Selling
+
+Hover a holding and click **Sell**. You can sell by number of shares, by the money you got back, or everything at once. The profit or loss lands in **Banked** and the trade appears under the **Sold** tab. Selling part of a position leaves the rest on its original buy price.
+
+The small **×** deletes a row without recording a sale — use **Sell** if you want the profit counted.
+
+## A PDF of everything
+
+Click **Statement** in the portfolio header. You get a PDF with your totals, every share you still hold and every trade you have ever closed — quantities, buy and sell prices, charges, profit and loss. Choose where to save it and it opens by itself.
+
+On the phone or in a browser this opens the print dialog instead; choose **Save as PDF** there.
+
+## Bits worth knowing
+
+- **Light or dark** — the **◐** button in the top bar switches, and it remembers.
+- **Market clocks** — click any of them for that exchange's trading days, opening and closing times in both its clock and yours, and how long until the next bell.
+- **Bought today?** A share you bought an hour ago is measured from what you paid, not from yesterday's close — so it will not claim you lost money on a move that happened before you owned it.
 
 Click any stock anywhere in the app (Hype Radar, Popular & Steady, or a holding) to see its price chart across 1D/5D/1M/6M/1Y/5Y and its latest related news.
 
@@ -95,7 +115,7 @@ Your holdings are stored **on your own device only** — in the app's data folde
 
 ---
 
-## ❓ Common questions
+## Common questions
 
 **Is it really free?** Yes, permanently. No ads, no paid tier, no trial.
 
