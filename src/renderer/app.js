@@ -850,9 +850,16 @@ async function syncBuyFromPay(pay) {
 /** In "by amount" mode the field holds money, not shares — the quantity is derived from the price. */
 function effectiveQty() {
   const raw = parseFloat($('fQty').value);
-  const price = nativeBuyPrice();
   if (!isFinite(raw) || raw <= 0) return NaN;
   if (state.qtyMode === 'amount') {
+    // When buy-price currency matches pay currency, work entirely in that currency—
+    // don't convert anything to native. When they differ, convert the amount to native
+    // currency and divide by the native price.
+    if (state.buyPriceCur === payCurrency()) {
+      const displayedPrice = parseFloat($('fAvg').value);
+      return isFinite(displayedPrice) && displayedPrice > 0 ? raw / displayedPrice : NaN;
+    }
+    const price = nativeBuyPrice();
     const spend = raw * (state.payRate || 1);
     return isFinite(price) && price > 0 ? spend / price : NaN;
   }
@@ -872,9 +879,12 @@ async function updatePreview() {
     return;
   }
 
-  const cur = nativeCur();
+  // When buy-price currency matches pay currency, display everything in that currency
+  const sameChurrency = state.buyPriceCur === payCurrency();
+  const cur = sameChurrency ? state.buyPriceCur : nativeCur();
   const sym = SYMBOLS[cur] || '';
-  const invested = qty * price;
+  const displayPrice = sameChurrency ? parseFloat($('fAvg').value) : price;
+  const invested = qty * displayPrice;
   const when = state.whenMode === 'now' ? 'right now' : state.priceInfo ? dateLabel(state.priceInfo.at) : 'that date';
   const pay = payCurrency();
   const paySym = SYMBOLS[pay] || '';
@@ -893,14 +903,14 @@ async function updatePreview() {
   if (state.whenMode === 'past') {
     const live = await window.pulse.lookup(state.pick.symbol).catch(() => null);
     if (live && !live.error && isFinite(live.price)) {
-      const changePct = ((live.price - price) / price) * 100;
-      const gain = qty * (live.price - price);
+      const changePct = ((live.price - displayPrice) / displayPrice) * 100;
+      const gain = qty * (live.price - displayPrice);
       line2 = `<br/>Now <b>${sym}${num(live.price)}</b> → <b class="${cls(gain)}">${gain >= 0 ? '+' : ''}${sym}${num(Math.abs(gain))}</b>
         <span class="${cls(changePct)}">(${pctS(changePct, 1)})</span> since you bought`;
     }
   }
 
-  el.innerHTML = `${qtyLine} at <b>${sym}${num(price)}</b> (${esc(when)})${priceNote}${line2}`;
+  el.innerHTML = `${qtyLine} at <b>${sym}${num(displayPrice)}</b> (${esc(when)})${priceNote}${line2}`;
 }
 
 function setQtyMode(mode) {
