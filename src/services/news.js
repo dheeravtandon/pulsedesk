@@ -3,15 +3,41 @@
 const { getText, pool } = require('./http');
 const { analyze } = require('./sentiment');
 
+/**
+ * Every source is a plain RSS/Atom feed — no keys, no quotas. The list is deliberately
+ * long and overlapping: any one publisher can 404 or rate-limit without emptying the wire,
+ * and de-duplication by normalised headline collapses the same story filed by five outlets.
+ */
 const FEEDS = [
+  // US / global markets
   { url: 'https://finance.yahoo.com/news/rssindex', source: 'Yahoo Finance', region: 'US' },
+  { url: 'https://finance.yahoo.com/news/rss', source: 'Yahoo Markets', region: 'US' },
   { url: 'https://feeds.content.dowjones.io/public/rss/mw_topstories', source: 'MarketWatch', region: 'US' },
+  { url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml', source: 'WSJ Markets', region: 'US' },
   { url: 'https://www.cnbc.com/id/100003114/device/rss/rss.html', source: 'CNBC Markets', region: 'US' },
+  { url: 'https://www.ft.com/markets?format=rss', source: 'FT Markets', region: 'GLOBAL' },
+  { url: 'https://seekingalpha.com/market_currents.xml', source: 'Seeking Alpha', region: 'US' },
   { url: 'https://www.investing.com/rss/news_25.rss', source: 'Investing.com', region: 'GLOBAL' },
+  { url: 'https://www.investing.com/rss/news_301.rss', source: 'Investing Econ', region: 'GLOBAL' },
+
+  // India
   { url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms', source: 'ET Markets', region: 'IN' },
+  { url: 'https://economictimes.indiatimes.com/prime/technology-and-startups/rssfeeds/63319172.cms', source: 'ET Tech', region: 'IN' },
   { url: 'https://www.moneycontrol.com/rss/buzzingstocks.xml', source: 'Moneycontrol', region: 'IN' },
+  { url: 'https://www.moneycontrol.com/rss/business.xml', source: 'MC Business', region: 'IN' },
+  { url: 'https://www.moneycontrol.com/rss/marketreports.xml', source: 'MC Reports', region: 'IN' },
   { url: 'https://www.livemint.com/rss/markets', source: 'Mint Markets', region: 'IN' },
-  { url: 'https://news.google.com/rss/search?q=stock+market+when:1d&hl=en-IN&gl=IN&ceid=IN:en', source: 'Google News', region: 'GLOBAL' }
+  { url: 'https://www.livemint.com/rss/companies', source: 'Mint Companies', region: 'IN' },
+  { url: 'https://www.business-standard.com/rss/markets-106.rss', source: 'Business Standard', region: 'IN' },
+  { url: 'https://www.thehindubusinessline.com/markets/feeder/default.rss', source: 'BusinessLine', region: 'IN' },
+
+  // Crypto
+  { url: 'https://cointelegraph.com/rss', source: 'Cointelegraph', region: 'CRYPTO' },
+  { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/', source: 'CoinDesk', region: 'CRYPTO' },
+
+  // Broad sweeps — catch anything the dedicated feeds miss
+  { url: 'https://news.google.com/rss/search?q=nifty+OR+sensex+when:1d&hl=en-IN&gl=IN&ceid=IN:en', source: 'Google News IN', region: 'IN' },
+  { url: 'https://news.google.com/rss/search?q=stock+market+when:1d&hl=en-US&gl=US&ceid=US:en', source: 'Google News US', region: 'US' }
 ];
 
 /** Names the ticker extractor looks for in headline text. */
@@ -90,8 +116,8 @@ function tickersIn(text) {
 
 const norm = (s) => s.toLowerCase().replace(/[^a-z0-9 ]/g, '').split(' ').slice(0, 9).join(' ');
 
-async function fetchAll(limit = 15) {
-  const results = await pool(FEEDS, 5, async (f) => parseFeed(await getText(f.url, { timeout: 11000 }), f.source, f.region));
+async function fetchAll(limit = 40) {
+  const results = await pool(FEEDS, 8, async (f) => parseFeed(await getText(f.url, { timeout: 11000 }), f.source, f.region));
 
   const seen = new Set();
   const items = [];

@@ -10,7 +10,6 @@
 import stocks from '../../src/services/stocks.js';
 import news from '../../src/services/news.js';
 import crypto from '../../src/services/crypto.js';
-import weather from '../../src/services/weather.js';
 import market from '../../src/services/market.js';
 import mutualfunds from '../../src/services/mutualfunds.js';
 
@@ -163,14 +162,14 @@ async function route(request, env, ctx) {
       return json({
         name: 'PulseDesk API',
         author: 'Dheerav Tandon',
-        endpoints: ['/api/indices', '/api/news', '/api/hyped', '/api/popular', '/api/funds', '/api/crypto', '/api/sessions', '/api/weather', '/api/cities', '/api/quotes', '/api/fx', '/api/lookup', '/api/search', '/api/price-at', '/api/history', '/api/ping', '/api/stats', '/api/health']
+        endpoints: ['/api/indices', '/api/news', '/api/hyped', '/api/popular', '/api/funds', '/api/crypto', '/api/sessions', '/api/quotes', '/api/fx', '/api/lookup', '/api/search', '/api/price-at', '/api/history', '/api/ping', '/api/stats', '/api/health']
       });
 
     case '/api/indices':
       return cached(request, ctx, 60, () => stocks.indices());
 
     case '/api/news':
-      return cached(request, ctx, 300, () => news.fetchAll(15));
+      return cached(request, ctx, 300, () => news.fetchAll(40));
 
     case '/api/hyped':
       return cached(request, ctx, 300, async () => {
@@ -224,17 +223,6 @@ async function route(request, env, ctx) {
       return json({ sessions }, 30);
     }
 
-    case '/api/weather': {
-      // Coordinates are rounded before use: coarser location, far better cache hit rate.
-      const lat = num(qp.get('lat'), null);
-      const lon = num(qp.get('lon'), null);
-      const coarse = lat != null && lon != null ? { lat: Math.round(lat * 10) / 10, lon: Math.round(lon * 10) / 10 } : {};
-      return cached(request, ctx, 1800, () => weather.today(coarse));
-    }
-
-    case '/api/cities':
-      return cached(request, ctx, 1200, () => weather.financial());
-
     case '/api/quotes': {
       const symbols = (qp.get('symbols') || '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 40);
       if (!symbols.length) return json({});
@@ -272,7 +260,7 @@ async function route(request, env, ctx) {
         probe('yahoo', () => stocks.chart('AAPL', '5d', '1d')),
         probe('binance', () => crypto.pumped(3)),
         probe('news', () => news.fetchAll(3)),
-        probe('weather', () => weather.today({ lat: 19.1, lon: 72.9 }))
+        probe('funds', () => mutualfunds.popular())
       ]);
       return json({ checks, database: !!env.DB });
     }

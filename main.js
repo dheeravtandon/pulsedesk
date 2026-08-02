@@ -7,7 +7,6 @@ const path = require('path');
 const stocks = require('./src/services/stocks');
 const crypto = require('./src/services/crypto');
 const news = require('./src/services/news');
-const weather = require('./src/services/weather');
 const portfolio = require('./src/services/portfolio');
 const market = require('./src/services/market');
 const mutualfunds = require('./src/services/mutualfunds');
@@ -21,8 +20,7 @@ const DEFAULT_SETTINGS = {
   compact: false,
   showOnAllDesktops: true,
   hyperMarket: 'both',
-  weather: { lat: null, lon: null },
-  refresh: { fast: 60, medium: 300, slow: 1800 }
+  refresh: { fast: 60, medium: 300 }
 };
 
 let win = null;
@@ -180,7 +178,7 @@ async function refreshFast() {
 }
 
 async function refreshMedium() {
-  const feed = await guard('news', () => news.fetchAll(15));
+  const feed = await guard('news', () => news.fetchAll(40));
   const mentions = (feed && feed.mentions) || {};
   const held = ((payload.portfolio && payload.portfolio.rows) || []).map((r) => r.symbol);
   const [hype, pop, funds] = await Promise.all([
@@ -198,30 +196,17 @@ async function refreshMedium() {
   });
 }
 
-async function refreshSlow() {
-  const [w, cities] = await Promise.all([
-    guard('weather', () => weather.today(settings.weather)),
-    guard('cities', () => weather.financial())
-  ]);
-  broadcast({
-    weather: w || payload.weather || null,
-    cities: cities || payload.cities || [],
-    meta: { ...noteErrors(), updatedAt: Date.now() }
-  });
-}
-
 function scheduleRefresh() {
   timers.forEach(clearInterval);
   const r = settings.refresh || DEFAULT_SETTINGS.refresh;
   timers = [
     setInterval(refreshFast, Math.max(20, r.fast) * 1000),
-    setInterval(refreshMedium, Math.max(60, r.medium) * 1000),
-    setInterval(refreshSlow, Math.max(300, r.slow) * 1000)
+    setInterval(refreshMedium, Math.max(60, r.medium) * 1000)
   ];
 }
 
 async function refreshAll() {
-  await Promise.all([refreshFast(), refreshMedium(), refreshSlow()]);
+  await Promise.all([refreshFast(), refreshMedium()]);
 }
 
 /* ---------- tray ---------- */
@@ -296,7 +281,7 @@ function refreshTray() {
 
 function buildTray() {
   tray = new Tray(iconImage.resize({ width: 16, height: 16 }));
-  tray.setToolTip('PulseDesk — markets, portfolio, weather · by Dheerav Tandon');
+  tray.setToolTip('PulseDesk — markets, portfolio, news · by Dheerav Tandon');
   refreshTray();
   tray.on('click', toggleWindow);
 }
@@ -347,7 +332,6 @@ function registerIpc() {
     saveSettings(patch);
     applyWindowState();
     if (patch.refresh) scheduleRefresh();
-    if (patch.weather) await refreshSlow();
     if (patch.hyperMarket) await refreshMedium();
     refreshTray();
     return settings;
@@ -431,7 +415,6 @@ if (!single) {
     win.webContents.once('did-finish-load', () => {
       refreshFast();
       refreshMedium();
-      refreshSlow();
     });
     scheduleRefresh();
   });
