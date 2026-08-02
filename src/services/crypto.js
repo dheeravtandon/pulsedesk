@@ -119,11 +119,15 @@ async function pumped(limit = 10, windowSize = '5h') {
 }
 
 async function pumpedFallback(limit) {
-  const j = await cachedJSON(
-    'cg:markets',
-    `${CG}/coins/markets?vs_currency=usd&order=volume_desc&per_page=120&page=1&price_change_percentage=1h,24h`,
-    120000
+  const j = await settled(
+    cachedJSON(
+      'cg:markets',
+      `${CG}/coins/markets?vs_currency=usd&order=volume_desc&per_page=120&page=1&price_change_percentage=1h,24h`,
+      120000
+    ),
+    null
   );
+  if (!j) return [];
   return (j || [])
     .map((c) => ({
       symbol: (c.symbol || '').toUpperCase(),
