@@ -39,7 +39,7 @@ function buildIndex() {
     '<link rel="stylesheet" href="styles.css" />',
     `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#05060f" />
-  <meta name="description" content="Hyped stocks, portfolio P&amp;L, market news with rise/fall calls, 5-hour crypto pumps and today's weather. Free, no login." />
+  <meta name="description" content="Hyped stocks, portfolio P&amp;L with a printable statement, market news with rise/fall calls, 5-hour crypto pumps and world market clocks. Free, no login." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="PulseDesk" />
