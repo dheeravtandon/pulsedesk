@@ -17,7 +17,9 @@ const state = {
   qtyMode: 'qty',
   sugRows: [],
   sugIndex: -1,
-  chartSym: null
+  chartSym: null,
+  chart: null,
+  sell: null
 };
 
 /* ---------------- helpers ---------------- */
@@ -219,6 +221,7 @@ function renderPortfolio(pf) {
   document.querySelectorAll('#curToggle button').forEach((b) => b.classList.toggle('active', b.dataset.cur === t.baseCurrency));
   $('pfSub').textContent = `${t.positions} position${t.positions === 1 ? '' : 's'} · ${t.winners}▲ ${t.losers}▼`;
   $('holdCount').textContent = t.positions ? `· ${t.positions}` : '';
+  $('tradeCount').textContent = t.tradeCount ? `· ${t.tradeCount}` : '';
 
   $('pfNet').textContent = money(t.netWorth);
   const d = $('pfDay');
@@ -230,15 +233,37 @@ function renderPortfolio(pf) {
     ? spark(hist, t.unrealised >= 0 ? '#17e29a' : '#ff4d6d', 48)
     : '<div class="empty" style="padding:6px;font-size:9.5px">Value history builds as the app runs</div>';
 
+  // Headline "money made": everything still held plus everything already sold.
+  $('pfEarned').innerHTML = `
+    <div class="pe-main">
+      <span class="k">Total money made</span>
+      <span class="v ${cls(t.totalPnl)}">${money(t.totalPnl)}</span>
+      <span class="s ${cls(t.totalPnl)}">${pctS(t.totalPnlPct)} on ${money(t.totalCost)} put in</span>
+    </div>
+    <div class="pe-split">
+      <div class="pe-part">
+        <span class="k">On paper</span>
+        <b class="${cls(t.unrealised)}">${money(t.unrealised)}</b>
+        <span class="s">${pctS(t.unrealisedPct, 1)} · still held</span>
+      </div>
+      <div class="pe-part">
+        <span class="k">Banked</span>
+        <b class="${cls(t.realised)}">${money(t.realised)}</b>
+        <span class="s">${t.tradeCount ? `${t.tradeCount} sold · ${t.winRate != null ? Math.round(t.winRate) : 0}% won` : 'nothing sold yet'}</span>
+      </div>
+    </div>`;
+
   const stats = [
-    ['Invested', money(t.invested), `${t.positions} holdings`],
-    ['Current value', money(t.value), t.cash ? `+ ${money(t.cash)} cash` : 'market value'],
-    ['Unrealised P&L', money(t.unrealised), pctS(t.unrealisedPct), cls(t.unrealised)],
-    ['Total P&L', money(t.totalPnl), `realised ${money(t.realised)}`, cls(t.totalPnl)]
+    ['Invested', money(t.invested), `${t.positions} holding${t.positions === 1 ? '' : 's'} open`],
+    ['Market value', money(t.value), t.cash ? `+ ${money(t.cash)} cash` : 'what it is worth now'],
+    ['Best open', t.best ? shortSym(t.best.symbol) : '—', t.best ? pctS(t.best.pnlPct, 1) : 'no holdings', t.best ? cls(t.best.pnl) : ''],
+    ['Best sale', t.bestTrade ? shortSym(t.bestTrade.symbol) : '—', t.bestTrade ? money(t.bestTrade.pnl) : 'no sales yet', t.bestTrade ? cls(t.bestTrade.pnl) : '']
   ];
   $('pfStats').innerHTML = stats
     .map(([k, v, s, c]) => `<div class="stat"><span class="k">${esc(k)}</span><span class="v ${c || ''}">${esc(v)}</span><span class="s">${esc(s)}</span></div>`)
     .join('');
+
+  renderClosed(pf.trades || []);
 
   const COLORS = ['#7c5cff', '#21d4fd', '#17e29a', '#ffc44d', '#ff4d6d', '#ff8ad4', '#5ce1e6', '#b58cff'];
   const rows = pf.rows || [];
@@ -282,11 +307,36 @@ function renderPortfolio(pf) {
       </div>
       <div><div class="h-v">${money(r.value)}</div><div class="h-sub">inv ${money(r.invested)}</div></div>
       <div><div class="h-p ${cls(r.pnl)}">${money(r.pnl)}</div><div class="h-sub ${cls(r.pnl)}">${pctS(r.pnlPct, 1)}</div></div>
-      <button class="x" data-del="${esc(r.id)}" title="Remove holding">×</button>
+      <div class="h-acts">
+        <button class="h-sell" data-sell="${esc(r.id)}" title="Sell some or all of this">Sell</button>
+        <button class="x" data-del="${esc(r.id)}" title="Delete this row without booking a sale">×</button>
+      </div>
     </div>`;
         })
         .join('')
     : '<div class="empty">No holdings yet.<br/>Hit <b>+ Add holding</b> and start typing a company name.</div>';
+}
+
+/** Closed positions — what was sold, when, and what it actually made. */
+function renderClosed(trades) {
+  const el = $('closedList');
+  if (!el) return;
+  el.innerHTML = trades.length
+    ? trades
+        .map((t) => {
+          const when = new Date(t.ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+          return `<div class="hold closed">
+      <div class="h-l">
+        <div class="h-s">${esc(shortSym(t.symbol))} <span class="sold-chip">SOLD</span></div>
+        <div class="h-q">${num(t.qty, t.qty % 1 ? 4 : 0)} @ ${num(t.buyPrice)} → ${num(t.sellPrice)}</div>
+        <div class="h-since">${esc(when)}${t.fees ? ` · ${money(t.fees)} charges` : ''}</div>
+      </div>
+      <div><div class="h-v">${money(t.proceeds)}</div><div class="h-sub">cost ${money(t.cost)}</div></div>
+      <div><div class="h-p ${cls(t.pnl)}">${money(t.pnl)}</div><div class="h-sub ${cls(t.pnl)}">${pctS(t.pnlPct, 1)}</div></div>
+    </div>`;
+        })
+        .join('')
+    : '<div class="empty">Nothing sold yet.<br/>Hit <b>Sell</b> on a holding and the profit shows up here.</div>';
 }
 
 function renderCrypto(c) {
@@ -393,15 +443,18 @@ function renderFunds(rows) {
 function renderSessions(m) {
   if (!m || !m.sessions) return;
   $('sessions').innerHTML = m.sessions
-    .map(
-      (s) => `<div class="ses">
-      <span class="st" style="width:7px;height:7px;border-radius:50%;flex:0 0 auto;background:${s.isOpen ? 'var(--up)' : 'var(--down)'};box-shadow:0 0 8px ${s.isOpen ? 'var(--up)' : 'var(--down)'}"></span>
-      <span class="nm3">${esc(s.flag)} ${esc(s.name)}</span>
-      <span style="color:var(--txt-mute)">${esc(s.clock)}</span>
-      <span class="ses-badge ${s.isOpen ? 'on' : 'off'}">${s.isOpen ? 'OPEN' : 'CLOSED'}</span>
+    .map((s) => {
+      const col = s.isOpen ? 'var(--up)' : 'var(--down)';
+      return `<div class="ses">
+      <div class="ses-top">
+        <span class="st" style="background:${col};box-shadow:0 0 8px ${col}"></span>
+        <span class="nm3">${esc(s.flag)} ${esc(s.name)}</span>
+        <span class="ses-badge ${s.isOpen ? 'on' : 'off'}">${s.isOpen ? 'OPEN' : 'CLOSED'}</span>
+      </div>
+      <span class="lt">${esc(s.clock)}</span>
       <span class="cd">${esc(s.countdown)}</span>
-    </div>`
-    )
+    </div>`;
+    })
     .join('');
 }
 
@@ -614,6 +667,117 @@ function setQtyMode(mode) {
   }
 }
 
+/* ---------------- sell flow ---------------- */
+
+const sellTimestamp = () => {
+  if (state.sellWhen === 'now') return Date.now();
+  const v = $('sWhen').value;
+  const t = v ? new Date(v).getTime() : NaN;
+  return isFinite(t) ? Math.min(t, Date.now()) : Date.now();
+};
+
+function openSell(id) {
+  const row = ((state.data.portfolio && state.data.portfolio.rows) || []).find((r) => r.id === id);
+  if (!row) return;
+  state.sell = row;
+  state.sellWhen = 'now';
+  state.sellMode = 'qty';
+  state.sellPriceManual = false;
+
+  $('modalSell').hidden = false;
+  $('sellHead').innerHTML = `<b>${esc(shortSym(row.symbol))}</b> <span>${esc(row.name || '')}</span>
+    <span class="sh-hold">You hold <b>${num(row.qty, row.qty % 1 ? 4 : 0)}</b> at <b>${num(row.avgPrice)}</b> average</span>`;
+
+  $('sQty').value = '';
+  $('sFees').value = '';
+  $('sWhen').value = '';
+  $('sellWhenWrap').hidden = true;
+  document.querySelectorAll('#sellWhenToggle button').forEach((b) => b.classList.toggle('active', b.dataset.when === 'now'));
+  setSellMode('qty');
+  fetchSellPrice();
+}
+
+function setSellMode(mode) {
+  state.sellMode = mode;
+  document.querySelectorAll('#sellQtyMode button').forEach((b) => b.classList.toggle('active', b.dataset.mode === mode));
+  const label = $('sellQtyLabel');
+  const input = $('sQty');
+  if (mode === 'all') {
+    // Selling out entirely: the quantity is fixed, so the field only gets in the way.
+    input.value = state.sell ? state.sell.qty : '';
+    input.disabled = true;
+    label.firstChild.textContent = 'Quantity (everything) ';
+  } else {
+    input.disabled = false;
+    label.firstChild.textContent = mode === 'amount' ? 'Amount received ' : 'Quantity ';
+    input.placeholder = mode === 'amount' ? 'e.g. 50000' : '10';
+  }
+  updateSellPreview();
+}
+
+function setSellPriceTag(text, kind) {
+  const el = $('sellPriceTag');
+  el.textContent = text;
+  el.className = `auto-tag${kind === 'manual' ? ' manual' : kind === 'loading' ? ' loading' : ''}`;
+}
+
+async function fetchSellPrice() {
+  if (!state.sell) return;
+  if (state.sellPriceManual) return updateSellPreview();
+  setSellPriceTag('fetching…', 'loading');
+  const info = await window.pulse.priceAt(state.sell.symbol, sellTimestamp()).catch(() => null);
+  if (!info || info.error || !isFinite(info.price)) {
+    setSellPriceTag('type it in', 'manual');
+    return updateSellPreview();
+  }
+  $('sPrice').value = Number(info.price.toFixed(info.price < 10 ? 6 : 2));
+  setSellPriceTag(state.sellWhen === 'now' ? 'live price' : info.exact ? 'price at that time' : 'nearest trading time', 'auto');
+  updateSellPreview();
+}
+
+/** In "by amount" mode the field holds money, so units come from the sale price. */
+function sellQty() {
+  const row = state.sell;
+  if (!row) return NaN;
+  if (state.sellMode === 'all') return row.qty;
+  const raw = parseFloat($('sQty').value);
+  const price = parseFloat($('sPrice').value);
+  if (!isFinite(raw) || raw <= 0) return NaN;
+  if (state.sellMode === 'amount') return isFinite(price) && price > 0 ? raw / price : NaN;
+  return raw;
+}
+
+function updateSellPreview() {
+  const el = $('sellPreview');
+  const row = state.sell;
+  if (!row) return;
+  const qty = sellQty();
+  const price = parseFloat($('sPrice').value);
+  const fees = parseFloat($('sFees').value) || 0;
+
+  if (!isFinite(price)) return (el.innerHTML = '<span class="muted">Type the price you sold at.</span>');
+  if (!isFinite(qty) || qty <= 0) {
+    return (el.innerHTML = `<span class="muted">${
+      state.sellMode === 'amount' ? 'Enter the money you got back.' : 'Enter how many you sold.'
+    }</span>`);
+  }
+  if (qty - row.qty > 1e-9) {
+    return (el.innerHTML = `<span class="warn">You only hold <b>${num(row.qty, row.qty % 1 ? 4 : 0)}</b> — cannot sell ${num(qty, 4)}.</span>`);
+  }
+
+  const proceeds = qty * price - fees;
+  const cost = qty * row.avgPrice;
+  const pnl = proceeds - cost;
+  const pct = cost ? (pnl / cost) * 100 : 0;
+  const left = row.qty - qty;
+
+  el.innerHTML = `Selling <b>${num(qty, qty % 1 ? 4 : 0)}</b> of <b>${esc(shortSym(row.symbol))}</b>
+    at <b>${num(price)}</b> = <b>${money(proceeds)}</b>${fees ? ` <span class="muted">(after ${money(fees)} charges)</span>` : ''}
+    <br/>Cost was <b>${money(cost)}</b> → <b class="${cls(pnl)}">${pnl >= 0 ? 'profit' : 'loss'} ${money(Math.abs(pnl))}</b>
+    <span class="${cls(pnl)}">(${pctS(pct, 1)})</span>
+    <br/><span class="muted">${left <= 1e-9 ? 'This closes the position completely.' : `${num(left, left % 1 ? 4 : 0)} left after this sale.`}</span>`;
+}
+
 function openAdd(prefillSymbol) {
   $('modalAdd').hidden = false;
   resetPick();
@@ -668,6 +832,7 @@ async function loadChart(range) {
   if (!info || info.error || !info.points || !info.points.length) {
     $('chPrice').innerHTML = '<span class="muted">No chart data for this range.</span>';
     $('chSvg').innerHTML = '';
+    state.chart = null;
     return;
   }
   const pts = info.points;
@@ -676,25 +841,153 @@ async function loadChart(range) {
   const first = pts[0].c;
   const chg = first ? ((last - first) / first) * 100 : 0;
   $('chPrice').innerHTML = `<b>${cur}${num(last, last > 1000 ? 0 : 2)}</b> <span class="${cls(chg)}">${pctS(chg, 2)}</span> <span class="muted">(${esc(range)})</span>`;
-  drawChart(pts, chg >= 0);
+  state.chart = { pts, cur, range, up: chg >= 0 };
+  drawChart(pts, chg >= 0, cur, range);
 }
 
-function drawChart(pts, up) {
-  const w = 600;
-  const h = 220;
+/** Grid steps rounded to 1/2/5 × 10ⁿ so axis labels read as round numbers. */
+function niceStep(span, count) {
+  const raw = span / Math.max(1, count);
+  const mag = Math.pow(10, Math.floor(Math.log10(raw || 1)));
+  const n = raw / mag;
+  return (n >= 5 ? 10 : n >= 2 ? 5 : n >= 1 ? 2 : 1) * mag;
+}
+
+/**
+ * Axis wording follows the span the data actually covers, not the range button that was
+ * pressed — if a provider returns daily candles for a "1D" request, clock times would all
+ * read the same and the axis would be useless.
+ */
+function timeLabel(ts, spanMs) {
+  const d = new Date(ts);
+  const day = 864e5;
+  if (spanMs <= 2 * day) return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  if (spanMs <= 10 * day) return d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit' });
+  if (spanMs <= 400 * day) return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  return d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+}
+
+const CH = { w: 700, h: 260, padR: 54, padB: 24, padT: 10 };
+
+function drawChart(pts, up, cur, range) {
+  const { w, h, padR, padB, padT } = CH;
+  const plotW = w - padR;
+  const plotH = h - padB - padT;
   const closes = pts.map((p) => p.c);
-  const lo = Math.min(...closes);
-  const hi = Math.max(...closes);
-  const rng = hi - lo || 1;
-  const step = w / (closes.length - 1 || 1);
-  const coords = closes.map((v, i) => [i * step, h - 12 - ((v - lo) / rng) * (h - 24)]);
-  const d = coords.map((c, i) => `${i ? 'L' : 'M'}${c[0].toFixed(1)},${c[1].toFixed(1)}`).join(' ');
+  let lo = Math.min(...closes);
+  let hi = Math.max(...closes);
+  // A flat series would collapse to a zero-height band, so give it breathing room.
+  if (hi - lo < 1e-9) {
+    hi += Math.abs(hi) * 0.005 || 1;
+    lo -= Math.abs(lo) * 0.005 || 1;
+  }
+  const step = niceStep(hi - lo, 4);
+  const gLo = Math.floor(lo / step) * step;
+  const gHi = Math.ceil(hi / step) * step;
+  const rng = gHi - gLo || 1;
+
+  const x = (i) => (i * plotW) / (pts.length - 1 || 1);
+  const y = (v) => padT + plotH - ((v - gLo) / rng) * plotH;
+
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.c).toFixed(1)}`).join(' ');
   const color = up ? '#17e29a' : '#ff4d6d';
+
+  // Money axis, drawn down the right so the price sits beside the latest point.
+  let grid = '';
+  for (let v = gLo; v <= gHi + 1e-9; v += step) {
+    const yy = y(v);
+    grid += `<line class="ch-grid" x1="0" y1="${yy.toFixed(1)}" x2="${plotW}" y2="${yy.toFixed(1)}"/>
+      <text class="ch-axis y" x="${plotW + 6}" y="${(yy + 3.5).toFixed(1)}">${esc(cur)}${num(v, v >= 1000 ? 0 : 2)}</text>`;
+  }
+
+  // Time axis, spaced so labels never collide regardless of how many points came back.
+  const spanMs = pts[pts.length - 1].t - pts[0].t;
+  const ticks = Math.min(6, pts.length);
+  let xAxis = '';
+  for (let t = 0; t < ticks; t++) {
+    const i = Math.round((t * (pts.length - 1)) / Math.max(1, ticks - 1));
+    const xx = x(i);
+    const anchor = t === 0 ? 'start' : t === ticks - 1 ? 'end' : 'middle';
+    xAxis += `<line class="ch-grid" x1="${xx.toFixed(1)}" y1="${padT}" x2="${xx.toFixed(1)}" y2="${padT + plotH}"/>
+      <text class="ch-axis x" style="text-anchor:${anchor}" x="${xx.toFixed(1)}" y="${h - 7}">${esc(timeLabel(pts[i].t, spanMs))}</text>`;
+  }
+
   $('chSvg').innerHTML = `<defs><linearGradient id="chg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="${color}" stop-opacity="0.35"/><stop offset="1" stop-color="${color}" stop-opacity="0"/>
     </linearGradient></defs>
-    <path d="${d} L${w},${h} L0,${h} Z" fill="url(#chg)"/>
-    <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    ${grid}${xAxis}
+    <path d="${d} L${x(pts.length - 1).toFixed(1)},${padT + plotH} L0,${padT + plotH} Z" fill="url(#chg)"/>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${x(pts.length - 1).toFixed(1)}" cy="${y(closes[closes.length - 1]).toFixed(1)}" r="3.5" fill="${color}"/>
+    <g id="chCross" style="display:none">
+      <line class="ch-cross" id="chCrossX" x1="0" y1="${padT}" x2="0" y2="${padT + plotH}"/>
+      <circle id="chCrossDot" r="4" fill="${color}" stroke="var(--bg)" stroke-width="2"/>
+    </g>`;
+}
+
+/** Pointer position → nearest candle, reported as money and moment in one card. */
+function chartHover(e) {
+  const c = state.chart;
+  const box = $('chBox');
+  const svg = $('chSvg');
+  const tip = $('chTip');
+  const cross = document.getElementById('chCross');
+  if (!c || !cross) return;
+
+  const r = svg.getBoundingClientRect();
+  const { w, h, padR, padB, padT } = CH;
+  const plotW = w - padR;
+  const plotH = h - padB - padT;
+  // The SVG letterboxes inside its box, so map client pixels back through the viewBox.
+  const scale = Math.min(r.width / w, r.height / h);
+  const offX = (r.width - w * scale) / 2;
+  const offY = (r.height - h * scale) / 2;
+  const vx = (e.clientX - r.left - offX) / scale;
+  if (vx < 0 || vx > plotW) return chartHoverOut();
+
+  const i = Math.max(0, Math.min(c.pts.length - 1, Math.round((vx / plotW) * (c.pts.length - 1))));
+  const p = c.pts[i];
+
+  const closes = c.pts.map((q) => q.c);
+  let lo = Math.min(...closes);
+  let hi = Math.max(...closes);
+  if (hi - lo < 1e-9) {
+    hi += Math.abs(hi) * 0.005 || 1;
+    lo -= Math.abs(lo) * 0.005 || 1;
+  }
+  const step = niceStep(hi - lo, 4);
+  const gLo = Math.floor(lo / step) * step;
+  const gHi = Math.ceil(hi / step) * step;
+  const px = (i * plotW) / (c.pts.length - 1 || 1);
+  const py = padT + plotH - ((p.c - gLo) / (gHi - gLo || 1)) * plotH;
+
+  cross.style.display = '';
+  document.getElementById('chCrossX').setAttribute('x1', px);
+  document.getElementById('chCrossX').setAttribute('x2', px);
+  document.getElementById('chCrossDot').setAttribute('cx', px);
+  document.getElementById('chCrossDot').setAttribute('cy', py);
+
+  const first = c.pts[0].c;
+  const move = first ? ((p.c - first) / first) * 100 : 0;
+  const spanMs = c.pts[c.pts.length - 1].t - c.pts[0].t;
+  const when = new Date(p.t).toLocaleString('en-GB', {
+    day: '2-digit', month: 'short', year: '2-digit',
+    ...(spanMs <= 10 * 864e5 ? { hour: '2-digit', minute: '2-digit' } : {})
+  });
+  tip.hidden = false;
+  tip.innerHTML = `<b>${esc(c.cur)}${num(p.c, p.c >= 1000 ? 0 : 2)}</b><span>${esc(when)}</span>
+    <span class="${cls(move)}"> · ${pctS(move, 2)}</span>`;
+
+  const boxR = box.getBoundingClientRect();
+  const left = offX + px * scale + (r.left - boxR.left);
+  tip.style.left = `${Math.max(52, Math.min(boxR.width - 52, left))}px`;
+  tip.style.top = `${offY + py * scale + (r.top - boxR.top) - 10}px`;
+}
+
+function chartHoverOut() {
+  const cross = document.getElementById('chCross');
+  if (cross) cross.style.display = 'none';
+  $('chTip').hidden = true;
 }
 
 /* ---------------- events ---------------- */
@@ -883,6 +1176,9 @@ function bind() {
   });
 
   $('holdings').addEventListener('click', async (e) => {
+    const sellId = e.target.dataset.sell;
+    if (sellId) return openSell(sellId);
+
     const id = e.target.dataset.del;
     if (id) {
       const pf = await window.pulse.portfolio.remove(id, null);
@@ -891,6 +1187,59 @@ function bind() {
     }
     const row = e.target.closest('.hold');
     if (row) openChart(row.dataset.sym, row.dataset.name);
+  });
+
+  // Holdings vs. Sold
+  $('pfTabs').addEventListener('click', (e) => {
+    const tab = e.target.dataset.pf;
+    if (!tab) return;
+    document.querySelectorAll('#pfTabs button').forEach((b) => b.classList.toggle('active', b.dataset.pf === tab));
+    $('holdings').hidden = tab !== 'holdings';
+    $('closedList').hidden = tab !== 'closed';
+  });
+
+  // sell flow
+  $('sellWhenToggle').addEventListener('click', (e) => {
+    const w = e.target.dataset.when;
+    if (!w) return;
+    state.sellWhen = w;
+    document.querySelectorAll('#sellWhenToggle button').forEach((b) => b.classList.toggle('active', b.dataset.when === w));
+    $('sellWhenWrap').hidden = w !== 'past';
+    state.sellPriceManual = false;
+    fetchSellPrice();
+  });
+  $('sellQtyMode').addEventListener('click', (e) => {
+    if (e.target.dataset.mode) setSellMode(e.target.dataset.mode);
+  });
+  $('sWhen').addEventListener('change', () => {
+    state.sellPriceManual = false;
+    fetchSellPrice();
+  });
+  $('sQty').addEventListener('input', updateSellPreview);
+  $('sFees').addEventListener('input', updateSellPreview);
+  $('sPrice').addEventListener('input', () => {
+    // Typing over a fetched price means the user knows better — stop overwriting it.
+    state.sellPriceManual = true;
+    setSellPriceTag('your price', 'manual');
+    updateSellPreview();
+  });
+  $('btnCancelSell').addEventListener('click', () => ($('modalSell').hidden = true));
+  $('btnConfirmSell').addEventListener('click', async () => {
+    const row = state.sell;
+    if (!row) return;
+    const qty = sellQty();
+    const price = parseFloat($('sPrice').value);
+    const fees = parseFloat($('sFees').value) || 0;
+    if (!isFinite(price) || price < 0) return alert('Enter the price you sold at.');
+    if (!isFinite(qty) || qty <= 0) return alert('Enter how many you sold.');
+    if (qty - row.qty > 1e-9) return alert(`You only hold ${num(row.qty, 4)} of ${shortSym(row.symbol)}.`);
+    try {
+      const pf = await window.pulse.portfolio.sell(row.id, { qty, price, fees, ts: sellTimestamp() });
+      if (pf) renderPortfolio(pf);
+      $('modalSell').hidden = true;
+    } catch (err) {
+      alert(err.message || 'Could not record that sale.');
+    }
   });
 
   // settings
@@ -929,6 +1278,8 @@ function bind() {
   });
   $('btnCloseChart').addEventListener('click', () => ($('modalChart').hidden = true));
   $('btnCloseChart2').addEventListener('click', () => ($('modalChart').hidden = true));
+  $('chBox').addEventListener('pointermove', chartHover);
+  $('chBox').addEventListener('pointerleave', chartHoverOut);
   $('btnAddFromChart').addEventListener('click', () => {
     const sym = state.chartSym;
     $('modalChart').hidden = true;
@@ -941,6 +1292,7 @@ function bind() {
       $('modalSet').hidden = true;
       $('modalChart').hidden = true;
       $('modalHypeAll').hidden = true;
+      $('modalSell').hidden = true;
     }
     if (e.key === 'F11') {
       e.preventDefault();
@@ -948,7 +1300,7 @@ function bind() {
     }
   });
 
-  [$('modalAdd'), $('modalSet'), $('modalChart'), $('modalHypeAll')].forEach((m) =>
+  [$('modalAdd'), $('modalSet'), $('modalChart'), $('modalHypeAll'), $('modalSell')].forEach((m) =>
     m.addEventListener('click', (e) => {
       if (e.target === m) m.hidden = true;
     })

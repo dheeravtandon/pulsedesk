@@ -66,6 +66,7 @@
               </div>
               <div class="pf-spark" id="pfSpark"></div>
             </div>
+            <div class="pf-earned" id="pfEarned"></div>
             <div class="stat-row" id="pfStats"></div>
           </div>
 
@@ -75,8 +76,12 @@
           </div>
 
           <div class="pf-col">
-            <div class="col-label">Holdings <span id="holdCount"></span></div>
+            <div class="pf-tabs" id="pfTabs">
+              <button type="button" class="active" data-pf="holdings">Holdings <span id="holdCount"></span></button>
+              <button type="button" data-pf="closed">Sold <span id="tradeCount"></span></button>
+            </div>
             <div class="holdings" id="holdings"></div>
+            <div class="holdings" id="closedList" hidden></div>
           </div>
         </div>
       </section>
@@ -159,7 +164,7 @@
       </section>
 
       <!-- MARKET CLOCKS -->
-      <section class="card span-4" id="cardSide">
+      <section class="card span-4 h-xs" id="cardSide">
         <div class="card-head"><h2>🕒 Market Clocks <span class="sub">when each exchange trades</span></h2></div>
         <div class="sessions" id="sessions"></div>
       </section>
@@ -215,6 +220,46 @@
     </div>
   </div>
 
+  <!-- sell modal -->
+  <div class="modal-backdrop" id="modalSell" hidden>
+    <div class="modal">
+      <h3>Sell holding</h3>
+      <div class="sell-head" id="sellHead"></div>
+
+      <label>When did you sell it?</label>
+      <div class="seg wide-seg" id="sellWhenToggle">
+        <button type="button" data-when="now" class="active">Right now</button>
+        <button type="button" data-when="past">Pick date &amp; time</button>
+      </div>
+      <label id="sellWhenWrap" hidden>Sale date &amp; time
+        <input id="sWhen" type="datetime-local" />
+      </label>
+
+      <div class="seg wide-seg" id="sellQtyMode">
+        <button type="button" data-mode="qty" class="active">By quantity</button>
+        <button type="button" data-mode="amount">By amount received</button>
+        <button type="button" data-mode="all">Sell everything</button>
+      </div>
+      <div class="row2">
+        <label id="sellQtyLabel">Quantity <input id="sQty" type="number" step="any" min="0" placeholder="10" /></label>
+        <label>Sell price <span class="auto-tag" id="sellPriceTag">auto</span>
+          <input id="sPrice" type="number" step="any" min="0" placeholder="fetched automatically" />
+        </label>
+      </div>
+      <label>Brokerage &amp; charges <span class="auto-tag">optional</span>
+        <input id="sFees" type="number" step="any" min="0" placeholder="0" />
+      </label>
+
+      <div class="invest-preview" id="sellPreview"></div>
+
+      <div class="modal-actions">
+        <button class="mini ghost" id="btnCancelSell">Cancel</button>
+        <button class="mini danger-solid" id="btnConfirmSell">Confirm sale</button>
+      </div>
+      <p class="tip">Selling books the profit or loss into <b>Realised P&amp;L</b>. Sell part of a position and the rest keeps its original buy price.</p>
+    </div>
+  </div>
+
   <!-- settings modal -->
   <div class="modal-backdrop" id="modalSet" hidden>
     <div class="modal">
@@ -247,7 +292,10 @@
         <button class="tb" id="btnCloseChart" title="Close">✕</button>
       </div>
       <div class="chart-price" id="chPrice">—</div>
-      <div class="chart-box"><svg id="chSvg" viewBox="0 0 600 220" preserveAspectRatio="none"></svg></div>
+      <div class="chart-box" id="chBox">
+        <svg id="chSvg" viewBox="0 0 700 260"></svg>
+        <div class="ch-tip" id="chTip" hidden></div>
+      </div>
       <div class="seg wide-seg" id="chRange">
         <button type="button" data-r="1D" class="active">1D</button>
         <button type="button" data-r="5D">5D</button>

@@ -174,6 +174,7 @@ button, .chip-btn, .mini, .add, .x, .clear { touch-action: manipulation; -webkit
 
 /* Cards clip their own overflow, so grid rows cannot auto-size from content —
    each card declares the height its internal scroll areas are designed around. */
+.h-xs { min-height: 138px; }
 .h-sm { min-height: 236px; }
 .h-md { min-height: 300px; }
 .h-lg { min-height: 470px; }
@@ -319,10 +320,38 @@ button, .chip-btn, .mini, .add, .x, .clear { touch-action: manipulation; -webkit
 .leg span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .leg b { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--txt-dim); }
 
+/* Money made, split into what is still on paper and what has actually been banked. */
+.pf-earned {
+  background: rgba(124, 92, 255, .1); border: 1px solid rgba(124, 92, 255, .28);
+  border-radius: 12px; padding: 10px 11px; display: flex; flex-direction: column; gap: 9px;
+}
+.pe-main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pe-main .k { font-size: 8.5px; letter-spacing: 1.2px; color: var(--txt-mute); text-transform: uppercase; }
+.pe-main .v { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.pe-main .s { font-size: 9.5px; font-variant-numeric: tabular-nums; }
+.pe-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.pe-part {
+  background: rgba(0, 0, 0, .22); border-radius: 9px; padding: 6px 8px;
+  display: flex; flex-direction: column; gap: 1px; min-width: 0;
+}
+.pe-part .k { font-size: 8px; letter-spacing: 1px; color: var(--txt-mute); text-transform: uppercase; }
+.pe-part b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.pe-part .s { font-size: 8.5px; color: var(--txt-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.pf-tabs { display: flex; gap: 5px; }
+.pf-tabs button {
+  flex: 1; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); color: var(--txt-dim);
+  border-radius: 8px; padding: 5px 8px; font-size: 9px; font-weight: 800; letter-spacing: .9px;
+  text-transform: uppercase; cursor: pointer; transition: .15s;
+}
+.pf-tabs button:hover { color: var(--txt); }
+.pf-tabs button.active { background: var(--accent-soft); border-color: rgba(124, 92, 255, .5); color: var(--txt); }
+
 .holdings { display: flex; flex-direction: column; gap: 5px; overflow-y: auto; flex: 1; min-height: 88px; padding-right: 3px; }
+.holdings[hidden] { display: none; }
 .hold .h-since { font-size: 8.5px; color: var(--txt-mute); }
 .hold {
-  display: grid; grid-template-columns: 1fr auto auto 22px; align-items: center; gap: 9px;
+  display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 9px;
   background: rgba(255, 255, 255, 0.03); border: 1px solid transparent;
   border-radius: 10px; padding: 7px 9px; transition: 0.15s;
 }
@@ -333,8 +362,36 @@ button, .chip-btn, .mini, .add, .x, .clear { touch-action: manipulation; -webkit
 .hold .h-v { text-align: right; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .hold .h-sub { font-size: 9px; color: var(--txt-mute); font-variant-numeric: tabular-nums; }
 .hold .h-p { text-align: right; font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.hold .x { opacity: 0; border: none; background: none; color: var(--down); cursor: pointer; font-size: 13px; }
-.hold:hover .x { opacity: 1; }
+
+/* Actions stay reserved-width so rows never reflow as they appear on hover. */
+.h-acts { display: flex; align-items: center; gap: 4px; width: 58px; justify-content: flex-end; }
+.hold .h-sell {
+  opacity: 0; border: 1px solid rgba(255, 196, 77, .45); background: rgba(255, 196, 77, .13);
+  color: var(--gold); border-radius: 7px; padding: 3px 7px; font-size: 9px; font-weight: 800;
+  letter-spacing: .5px; cursor: pointer; transition: .15s;
+}
+.hold .h-sell:hover { background: rgba(255, 196, 77, .26); }
+.hold .x { opacity: 0; border: none; background: none; color: var(--down); cursor: pointer; font-size: 13px; padding: 0 2px; }
+.hold:hover .x, .hold:hover .h-sell { opacity: 1; }
+
+.hold.closed { grid-template-columns: 1fr auto auto; opacity: .9; }
+.hold.closed:hover { background: rgba(255, 255, 255, .05); border-color: transparent; }
+.sold-chip {
+  font-size: 7.5px; font-weight: 800; letter-spacing: .6px; padding: 1px 5px; border-radius: 5px;
+  background: rgba(255, 255, 255, .1); color: var(--txt-mute); vertical-align: middle;
+}
+
+/* sell dialog */
+.sell-head {
+  background: rgba(255, 255, 255, .04); border: 1px solid var(--line); border-radius: 10px;
+  padding: 9px 11px; display: flex; flex-direction: column; gap: 2px;
+}
+.sell-head b { font-size: 14px; letter-spacing: .4px; }
+.sell-head span { font-size: 10px; color: var(--txt-mute); }
+.sell-head .sh-hold { font-size: 10.5px; color: var(--txt-dim); font-variant-numeric: tabular-nums; }
+.mini.danger-solid { background: linear-gradient(135deg, #ff4d6d, #ff8ad4); color: #fff; border: none; font-weight: 700; }
+.mini.danger-solid:hover { filter: brightness(1.1); }
+.invest-preview .warn { color: var(--down); }
 
 .empty { text-align: center; color: var(--txt-mute); font-size: 11px; padding: 18px 8px; line-height: 1.7; }
 
@@ -395,14 +452,21 @@ button, .chip-btn, .mini, .add, .x, .clear { touch-action: manipulation; -webkit
 
 /* ---------- market clocks ---------- */
 
-.sessions { display: flex; flex-direction: column; gap: 4px; }
-.ses { display: flex; align-items: center; gap: 8px; font-size: 10.5px; padding: 4px 7px; border-radius: 8px; background: rgba(255,255,255,0.03); }
+/* Six tiles across rather than six stacked rows, so the whole card is one short glance. */
+.sessions { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+.ses {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  font-size: 10.5px; padding: 8px 9px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035); border: 1px solid var(--line); min-width: 0;
+}
+.ses-top { display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; }
 .ses .st { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
-.ses .nm3 { font-weight: 800; letter-spacing: 0.8px; }
+.ses .nm3 { font-weight: 800; letter-spacing: 0.8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ses .lt { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.4px; }
 .ses-badge { font-size: 7.5px; font-weight: 800; letter-spacing: .5px; padding: 1px 5px; border-radius: 5px; white-space: nowrap; }
 .ses-badge.on { background: var(--up-soft); color: var(--up); }
 .ses-badge.off { background: rgba(255, 77, 109, .14); color: var(--down); }
-.ses .cd { margin-left: auto; color: var(--txt-mute); font-variant-numeric: tabular-nums; font-size: 9.5px; }
+.ses .cd { color: var(--txt-mute); font-variant-numeric: tabular-nums; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 
 /* ---------- news ---------- */
 
@@ -519,8 +583,27 @@ button, .chip-btn, .mini, .add, .x, .clear { touch-action: manipulation; -webkit
 .chart-sub { font-size: 10.5px; color: var(--txt-mute); margin-top: 1px; }
 .chart-price { font-size: 15px; font-variant-numeric: tabular-nums; }
 .chart-price .muted { font-size: 10.5px; color: var(--txt-mute); font-weight: 500; }
-.chart-box { height: 200px; background: rgba(255, 255, 255, .025); border: 1px solid var(--line); border-radius: 12px; padding: 8px; }
-.chart-box svg { width: 100%; height: 100%; }
+.chart-box {
+  position: relative; height: 250px; background: rgba(255, 255, 255, .025);
+  border: 1px solid var(--line); border-radius: 12px; padding: 8px;
+}
+.chart-box svg { width: 100%; height: 100%; display: block; }
+.ch-grid { stroke: rgba(255, 255, 255, .07); stroke-width: 1; }
+.ch-axis { fill: var(--txt-mute); font-size: 10px; font-variant-numeric: tabular-nums; }
+.ch-axis.y { text-anchor: start; }
+.ch-axis.x { text-anchor: middle; }
+.ch-cross { stroke: rgba(255, 255, 255, .35); stroke-width: 1; stroke-dasharray: 3 3; }
+
+/* Readout follows the pointer and names the money and the moment together. */
+.ch-tip {
+  position: absolute; pointer-events: none; z-index: 3; transform: translate(-50%, -100%);
+  background: rgba(10, 12, 24, .96); border: 1px solid var(--line); border-radius: 9px;
+  padding: 6px 9px; font-size: 10.5px; white-space: nowrap; line-height: 1.5;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .5);
+}
+.ch-tip[hidden] { display: none; }
+.ch-tip b { font-size: 12.5px; font-variant-numeric: tabular-nums; display: block; }
+.ch-tip span { color: var(--txt-mute); }
 
 /* all-scanned-stocks list */
 .hype-all-list { max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 3px; }
@@ -578,14 +661,20 @@ body.compact .h-md { min-height: 260px; }
   .hype-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .h-sm { min-height: 300px; }
   .h-lg { min-height: 500px; }
+  /* Clocks wrap to two rows here, so the card needs the extra band. */
+  .h-xs { min-height: 218px; }
+  .sessions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 620px) {
   .grid { grid-template-columns: minmax(0, 1fr); }
   .span-2, .span-4 { grid-column: span 1; }
   .hype-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sessions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pf-body { grid-template-columns: minmax(0, 1fr); }
   .h-md { min-height: 640px; }
   .h-lg { min-height: 620px; }
+  /* Three rows of clocks at two columns. */
+  .h-xs { min-height: 300px; }
   .alloc { grid-row: auto; }
   .modal { max-height: 92vh; }
   .tb, .mini, .chip-btn, .add, .x { min-height: 30px; }
