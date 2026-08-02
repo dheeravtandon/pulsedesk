@@ -409,14 +409,19 @@ async function indices() {
   return rows.filter(Boolean);
 }
 
+/**
+ * Both directions of a pair are quoted to four significant figures, so the small-number side
+ * loses precision: INRUSD=X reads 0.0105 where USDINR=X reads 95.39 — a 0.16% gap, which is
+ * real money on a large order. When the direct rate is well under 1, invert the other side.
+ */
 async function fxRate(from, to) {
   if (!from || !to || from === to) return 1;
-  try {
-    const c = await chart(`${from}${to}=X`, '5d', '1d');
-    return c.price || 1;
-  } catch {
-    return 1;
-  }
+  const direct = await settled(chart(`${from}${to}=X`, '5d', '1d'));
+  if (direct && direct.price >= 0.1) return direct.price;
+
+  const inverse = await settled(chart(`${to}${from}=X`, '5d', '1d'));
+  if (inverse && inverse.price > 0) return 1 / inverse.price;
+  return direct && direct.price ? direct.price : 1;
 }
 
 module.exports = {
