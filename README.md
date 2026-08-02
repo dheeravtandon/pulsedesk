@@ -15,11 +15,11 @@
 
 ## What it is
 
-A frameless, always-on-top Electron widget that keeps one screen of live market context permanently in view: the five most-hyped stocks (with a show-all view of everything scanned), your portfolio P&L, fifteen market headlines each carrying a rise/fall call, the ten hardest-pumping crypto pairs of the last five hours, popular & steady large caps by sector, popular Indian mutual fund NAVs, a price chart for any listed stock, market clocks for six financial hubs, and today's weather.
+A frameless, always-on-top Electron widget that keeps one screen of live market context permanently in view: the five most-hyped stocks (with a show-all view of everything scanned), your portfolio P&L, forty market headlines each carrying a rise/fall call, the ten hardest-pumping crypto pairs of the last five hours, popular & steady large caps by sector, popular Indian mutual fund NAVs, a price chart for any listed stock, and market clocks for six financial hubs.
 
 ## Why it exists
 
-Retail traders juggle a broker app, two news sites, a crypto exchange tab and a weather widget. PulseDesk collapses that into a single always-visible surface that costs nothing to run — every data source is a free, keyless public API.
+Retail traders juggle a broker app, two news sites and a crypto exchange tab. PulseDesk collapses that into a single always-visible surface that costs nothing to run — every data source is a free, keyless public API.
 
 ## Step flow
 
@@ -28,11 +28,10 @@ Retail traders juggle a broker app, two news sites, a crypto exchange tab and a 
 | 1 | Launch | Electron boots, loads `settings.json` + `portfolio.json` from userData | `main.js` |
 | 2 | Window | Frameless transparent window, always-on-top at `screen-saver` level, tray icon registered | `main.js` |
 | 3 | Fast tick (60 s) | Indices, portfolio valuation, crypto pumps, Fear & Greed, sessions, breadth | `refreshFast()` |
-| 4 | Medium tick (5 min) | RSS feeds → dedupe → sentiment → top 15; ticker mentions feed the hype scorer | `refreshMedium()` |
-| 5 | Slow tick (30 min) | Geolocation + weather + air quality | `refreshSlow()` |
-| 6 | Broadcast | Main pushes partial payloads over `data:update`; renderer patches only what changed | `preload.js` |
-| 7 | Interact | Add/remove holdings, switch base currency, filter news, tune opacity/pinning | `src/renderer/app.js` |
-| 8 | Persist | Bounds, settings, holdings and a daily net-worth snapshot written to userData | `portfolio.js` |
+| 4 | Medium tick (5 min) | 22 RSS feeds → dedupe → sentiment → top 40; ticker mentions feed the hype scorer | `refreshMedium()` |
+| 5 | Broadcast | Main pushes partial payloads over `data:update`; renderer patches only what changed | `preload.js` |
+| 6 | Interact | Add/remove holdings, switch base currency, filter news, tune opacity/pinning | `src/renderer/app.js` |
+| 7 | Persist | Bounds, settings, holdings and a daily net-worth snapshot written to userData | `portfolio.js` |
 
 ## Roles
 
@@ -65,12 +64,10 @@ Retail traders juggle a broker app, two news sites, a crypto exchange tab and a 
 | Quotes / charts | Yahoo Finance `v8/finance/chart` | Prices, day change, volume, sparklines |
 | Quote fallback | Stooq CSV | US tickers when Yahoo throttles |
 | Trending | Yahoo `v1/finance/trending/US` | Hype universe seed |
-| News | Yahoo, MarketWatch, CNBC, Investing.com, ET Markets, Moneycontrol, Mint, Google News RSS | News wire |
+| News | 22 RSS feeds — Yahoo, MarketWatch, WSJ, CNBC, FT, Seeking Alpha, Investing.com, ET, Moneycontrol, Mint, Business Standard, BusinessLine, CoinDesk, Cointelegraph, Google News | News wire |
 | Crypto | Binance `ticker/24hr` + `ticker?windowSize=5h` | Exact 5-hour pump ranking |
 | Crypto fallback | CoinGecko `coins/markets` | 1h/24h movers when Binance is unreachable |
 | Sentiment index | alternative.me Fear & Greed | Crypto risk appetite |
-| Weather | Open-Meteo forecast + air-quality | Temperature, rain, UV, AQI, plus six financial-hub cities |
-| Geolocation | ipapi.co → ipwho.is → New Delhi | Weather coordinates |
 | Mutual funds | mfapi.in (AMFI NAV data) | Direct-growth scheme NAV and day/month/year change |
 
 ## How the numbers are derived

@@ -47,6 +47,14 @@ Download **`PulseDesk-1.0.0-portable.exe`** from the same page and just double-c
 
 Open **https://dheeravtandon.github.io/pulsedesk/** in Chrome or Edge and click the **install icon** in the address bar (a small screen with a down arrow). You get a proper desktop window.
 
+**Option 4 — running from the source folder**
+
+Double-click **`PulseDesk.vbs`**. The app opens on its own with **no black console window** behind it.
+
+The first time only, it asks permission to download what it runs on (2–5 minutes). After that it starts straight away.
+
+*`run-pulsedesk.bat` still works and does the same thing, but it keeps a console window open the whole time the app is running — use the `.vbs` unless you want to watch the logs.*
+
 ---
 
 ## 🖥️ Using the desktop app
