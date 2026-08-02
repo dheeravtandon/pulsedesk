@@ -311,7 +311,7 @@ function renderPortfolio(pf) {
           return `<div class="hold" data-id="${esc(r.id)}" data-sym="${esc(r.symbol)}" data-name="${esc(r.name || '')}">
       <div class="h-l">
         <div class="h-s">${esc(shortSym(r.symbol))} <span class="${cls(r.changePct)}" style="font-size:9px">${pctS(r.changePct, 1)}</span></div>
-        <div class="h-q">${num(r.qty, r.qty % 1 ? 4 : 0)} @ ${num(r.avgPrice)} → ${num(r.price)}${r.live ? '' : ' (stale)'}</div>
+        <div class="h-q">${num(r.qty, r.qty % 1 ? 4 : 0)} @ ${money(r.avgPrice, r.currency)} → ${money(r.price, r.currency)}${r.live ? '' : ' (stale)'}</div>
         <div class="h-since">${esc(since)}</div>
       </div>
       <div><div class="h-v">${money(r.value)}</div><div class="h-sub">inv ${money(r.invested)}</div></div>
@@ -337,8 +337,8 @@ function renderClosed(trades) {
           return `<div class="hold closed">
       <div class="h-l">
         <div class="h-s">${esc(shortSym(t.symbol))} <span class="sold-chip">SOLD</span></div>
-        <div class="h-q">${num(t.qty, t.qty % 1 ? 4 : 0)} @ ${num(t.buyPrice)} → ${num(t.sellPrice)}</div>
-        <div class="h-since">${esc(when)}${t.fees ? ` · ${money(t.fees)} charges` : ''}</div>
+        <div class="h-q">${num(t.qty, t.qty % 1 ? 4 : 0)} @ ${money(t.buyPrice, t.currency || state.base)} → ${money(t.sellPrice, t.currency || state.base)}</div>
+        <div class="h-since">${esc(when)}${t.fees ? ` · ${money(t.fees, t.currency || state.base)} charges` : ''}</div>
       </div>
       <div><div class="h-v">${money(t.proceeds)}</div><div class="h-sub">cost ${money(t.cost)}</div></div>
       <div><div class="h-p ${cls(t.pnl)}">${money(t.pnl)}</div><div class="h-sub ${cls(t.pnl)}">${pctS(t.pnlPct, 1)}</div></div>
@@ -856,7 +856,8 @@ function openSell(id) {
 
   $('modalSell').hidden = false;
   $('sellHead').innerHTML = `<b>${esc(shortSym(row.symbol))}</b> <span>${esc(row.name || '')}</span>
-    <span class="sh-hold">You hold <b>${num(row.qty, row.qty % 1 ? 4 : 0)}</b> at <b>${num(row.avgPrice)}</b> average</span>`;
+    <span class="sh-hold">You hold <b>${num(row.qty, row.qty % 1 ? 4 : 0)}</b> at <b>${money(row.avgPrice, row.currency || state.base)}</b> average
+    ${row.currency && row.currency !== state.base ? `<span class="muted">— priced in ${esc(row.currency)}</span>` : ''}</span>`;
 
   $('sQty').value = '';
   $('sFees').value = '';
@@ -940,11 +941,16 @@ function updateSellPreview() {
   const pnl = proceeds - cost;
   const pct = cost ? (pnl / cost) * 100 : 0;
   const left = row.qty - qty;
+  // Prices typed here are in the currency the share trades in, not the portfolio's base.
+  const cur = row.currency || state.base;
+  const inBase = cur !== state.base && row.fxRate
+    ? ` <span class="muted">(${money(pnl * row.fxRate, state.base)} in ${esc(state.base)})</span>`
+    : '';
 
   el.innerHTML = `Selling <b>${num(qty, qty % 1 ? 4 : 0)}</b> of <b>${esc(shortSym(row.symbol))}</b>
-    at <b>${num(price)}</b> = <b>${money(proceeds)}</b>${fees ? ` <span class="muted">(after ${money(fees)} charges)</span>` : ''}
-    <br/>Cost was <b>${money(cost)}</b> → <b class="${cls(pnl)}">${pnl >= 0 ? 'profit' : 'loss'} ${money(Math.abs(pnl))}</b>
-    <span class="${cls(pnl)}">(${pctS(pct, 1)})</span>
+    at <b>${money(price, cur)}</b> = <b>${money(proceeds, cur)}</b>${fees ? ` <span class="muted">(after ${money(fees, cur)} charges)</span>` : ''}
+    <br/>Cost was <b>${money(cost, cur)}</b> → <b class="${cls(pnl)}">${pnl >= 0 ? 'profit' : 'loss'} ${money(Math.abs(pnl), cur)}</b>
+    <span class="${cls(pnl)}">(${pctS(pct, 1)})</span>${inBase}
     <br/><span class="muted">${left <= 1e-9 ? 'This closes the position completely.' : `${num(left, left % 1 ? 4 : 0)} left after this sale.`}</span>`;
 }
 
@@ -1217,8 +1223,8 @@ function buildStatementHtml() {
         <td class="mono">${esc(shortSym(r.symbol))}</td>
         <td>${esc(r.name || '')}</td>
         <td class="n">${num(r.qty, r.qty % 1 ? 4 : 0)}</td>
-        <td class="n">${num(r.avgPrice)}</td>
-        <td class="n">${num(r.price)}</td>
+        <td class="n">${stmtMoney(r.avgPrice, r.currency || cur)}</td>
+        <td class="n">${stmtMoney(r.price, r.currency || cur)}</td>
         <td class="n">${m(r.invested)}</td>
         <td class="n">${m(r.value)}</td>
         <td class="n ${sign(r.pnl)}">${m(r.pnl)}</td>
@@ -1239,9 +1245,9 @@ function buildStatementHtml() {
         <td class="mono">${esc(shortSym(x.symbol))}</td>
         <td>${esc(x.name || '')}</td>
         <td class="n">${num(x.qty, x.qty % 1 ? 4 : 0)}</td>
-        <td class="n">${num(x.buyPrice)}</td>
-        <td class="n">${num(x.sellPrice)}</td>
-        <td class="n">${x.fees ? m(x.fees) : '—'}</td>
+        <td class="n">${stmtMoney(x.buyPrice, x.currency || cur)}</td>
+        <td class="n">${stmtMoney(x.sellPrice, x.currency || cur)}</td>
+        <td class="n">${x.fees ? stmtMoney(x.fees, x.currency || cur) : '—'}</td>
         <td class="n">${m(x.cost)}</td>
         <td class="n">${m(x.proceeds)}</td>
         <td class="n ${sign(x.pnl)}">${m(x.pnl)}</td>
