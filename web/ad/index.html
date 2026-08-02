@@ -13,23 +13,42 @@
        DESIGN TOKENS
     ═══════════════════════════════════════════ */
     :root {
+      /* Vibrant electric blue — the default look */
+      --bg-0: #071c52;
+      --bg-1: #0a2470;
+      --bg-2: #0e2f8f;
+      --glass: rgba(20, 46, 130, 0.55);
+      --glass-2: rgba(30, 64, 170, 0.4);
+      --line: rgba(160, 195, 255, 0.22);
+      --txt: #eef3ff;
+      --txt-dim: #aac0f2;
+      --txt-mute: #7b93d1;
+      --up: #17e29a;
+      --up-soft: rgba(23, 226, 154, 0.14);
+      --down: #ff4d6d;
+      --down-soft: rgba(255, 77, 109, 0.14);
+      --acc: #2f6bff;
+      --acc-2: #43b6ff;
+      --gold: #ffc94d;
+      --gold-soft: rgba(255, 201, 77, 0.16);
+      --r: 16px;
+      color-scheme: dark;
+      transition: background 0.5s ease;
+    }
+
+    :root[data-theme='dark'] {
+      /* Optional near-black theme */
       --bg-0: #05060f;
       --bg-1: #0b0d1c;
+      --bg-2: #10132a;
       --glass: rgba(18, 21, 42, 0.72);
       --glass-2: rgba(28, 32, 60, 0.55);
       --line: rgba(140, 160, 255, 0.14);
       --txt: #e9edff;
       --txt-dim: #8f9bc7;
       --txt-mute: #5d6893;
-      --up: #17e29a;
-      --up-soft: rgba(23, 226, 154, 0.14);
-      --down: #ff4d6d;
-      --down-soft: rgba(255, 77, 109, 0.14);
       --acc: #7c5cff;
       --acc-2: #21d4fd;
-      --gold: #ffc44d;
-      --r: 16px;
-      color-scheme: dark;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,6 +60,44 @@
       color: var(--txt);
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background:
+        radial-gradient(ellipse 1400px 900px at var(--px, 50%) var(--py, 20%), rgba(255,201,77,0.06), transparent 60%),
+        linear-gradient(125deg, var(--bg-0), var(--bg-1) 45%, var(--bg-2) 100%);
+      background-attachment: fixed;
+      background-size: 100% 100%, 260% 260%;
+      animation: bg-drift 22s ease-in-out infinite;
+      transition: background-color 0.5s ease;
+    }
+    @keyframes bg-drift {
+      0%, 100% { background-position: center, 0% 0%; }
+      50% { background-position: center, 100% 60%; }
+    }
+
+    /* ═══════════════════════════════════════════
+       THEME TOGGLE
+    ═══════════════════════════════════════════ */
+    #themeToggle {
+      position: fixed;
+      top: 20px; right: 20px;
+      z-index: 50;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background: var(--glass);
+      backdrop-filter: blur(16px);
+      color: var(--gold);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    #themeToggle:hover {
+      transform: translateY(-2px) rotate(20deg);
+      box-shadow: 0 0 24px var(--gold-soft);
+      border-color: var(--gold);
     }
 
     /* ═══════════════════════════════════════════
@@ -169,14 +226,16 @@
 
     .hero-logo {
       font-size: 72px;
-      background: linear-gradient(135deg, var(--acc-2), var(--acc) 50%, var(--up));
+      background: linear-gradient(135deg, var(--gold), var(--acc-2) 55%, var(--acc));
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
-      filter: drop-shadow(0 0 40px rgba(124,92,255,0.5));
+      filter: drop-shadow(0 0 40px rgba(255,201,77,0.45));
       animation: float 4s ease-in-out infinite, spin-slow 12s linear infinite;
       margin-bottom: 32px;
+      transition: filter 0.3s ease;
     }
+    .hero-logo:hover { filter: drop-shadow(0 0 60px rgba(255,201,77,0.75)); }
     @keyframes spin-slow { to { transform: rotate(360deg); } }
     @keyframes float {
       0%, 100% { transform: translateY(0) rotate(0deg); }
@@ -195,7 +254,7 @@
       color: #cfd8ff;
     }
     .hero-title .desk-word {
-      background: linear-gradient(135deg, var(--acc), var(--acc-2));
+      background: linear-gradient(135deg, var(--gold), var(--acc-2));
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
@@ -243,6 +302,12 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .hero-badge:hover {
+      transform: translateY(-3px);
+      border-color: var(--gold);
+      box-shadow: 0 10px 30px var(--gold-soft);
     }
     .hero-badge .dot-green { width: 8px; height: 8px; border-radius: 50%; background: var(--up); box-shadow: 0 0 10px var(--up); }
     .hero-badge .dot-blue { width: 8px; height: 8px; border-radius: 50%; background: var(--acc-2); box-shadow: 0 0 10px var(--acc-2); }
@@ -308,10 +373,16 @@
       line-height: 1.2;
     }
     .section-title .gradient-text {
-      background: linear-gradient(135deg, var(--acc), var(--acc-2));
+      background: linear-gradient(135deg, var(--gold), #ffe19c);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
+      background-size: 200% auto;
+      animation: gold-shimmer 4s ease-in-out infinite;
+    }
+    @keyframes gold-shimmer {
+      0%, 100% { background-position: 0% center; }
+      50% { background-position: 100% center; }
     }
 
     /* ═══════════════════════════════════════════
@@ -348,7 +419,7 @@
     }
     .mock-logo {
       font-size: 14px;
-      background: linear-gradient(135deg, var(--acc-2), var(--acc), var(--up));
+      background: linear-gradient(135deg, var(--gold), var(--acc-2), var(--up));
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
@@ -455,13 +526,13 @@
     .hype-fill {
       height: 100%;
       border-radius: 3px;
-      background: linear-gradient(90deg, var(--acc), var(--acc-2));
+      background: linear-gradient(90deg, var(--acc), var(--gold));
       transform-origin: left;
       transform: scaleX(0);
       transition: transform 1.2s cubic-bezier(0.16,1,0.3,1);
     }
     .hype-fill.animate { transform: scaleX(1); }
-    .hype-score { font-size: 10px; color: var(--acc-2); font-family: 'JetBrains Mono', monospace; width: 24px; text-align: right; }
+    .hype-score { font-size: 10px; color: var(--gold); font-family: 'JetBrains Mono', monospace; width: 24px; text-align: right; }
 
     /* mini chart (SVG) */
     .mini-chart-svg {
@@ -471,7 +542,7 @@
     }
     .mini-chart-svg .chart-line {
       fill: none;
-      stroke: var(--acc-2);
+      stroke: var(--gold);
       stroke-width: 2;
       stroke-dasharray: 500;
       stroke-dashoffset: 500;
@@ -543,8 +614,9 @@
       transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
     .feature-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 20px 60px rgba(124,92,255,0.15);
+      transform: translateY(-6px) scale(1.015);
+      box-shadow: 0 20px 60px var(--gold-soft);
+      border-color: var(--gold);
     }
     .feature-card::before {
       content: '';
@@ -589,7 +661,7 @@
     .fs-num {
       font-size: 24px;
       font-weight: 700;
-      background: linear-gradient(135deg, var(--acc), var(--acc-2));
+      background: linear-gradient(135deg, var(--gold), var(--acc-2));
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
@@ -624,9 +696,10 @@
       font-family: 'JetBrains Mono', monospace;
     }
     .indicator-pill:hover {
-      border-color: var(--acc);
-      box-shadow: 0 0 20px rgba(124,92,255,0.2);
-      transform: translateY(-2px);
+      border-color: var(--gold);
+      box-shadow: 0 0 20px var(--gold-soft);
+      transform: translateY(-3px) scale(1.05);
+      color: var(--gold);
     }
 
     /* candlestick SVG */
@@ -674,8 +747,9 @@
       transition: all 0.3s ease;
     }
     .diff-card:hover {
-      border-color: var(--up);
-      box-shadow: 0 0 30px rgba(23,226,154,0.1);
+      border-color: var(--gold);
+      box-shadow: 0 0 30px var(--gold-soft);
+      transform: translateY(-5px);
     }
     .diff-icon {
       font-size: 40px;
@@ -724,9 +798,9 @@
       transition: all 0.3s ease;
     }
     .platform-icon-box:hover {
-      border-color: var(--acc-2);
-      box-shadow: 0 0 30px rgba(33,212,253,0.15);
-      transform: translateY(-4px);
+      border-color: var(--gold);
+      box-shadow: 0 0 30px var(--gold-soft);
+      transform: translateY(-6px) scale(1.06);
     }
     .platform-name {
       font-size: 13px;
@@ -748,16 +822,16 @@
 
     .cta-logo {
       font-size: 96px;
-      background: linear-gradient(135deg, var(--acc-2), var(--acc) 50%, var(--up));
+      background: linear-gradient(135deg, var(--gold), var(--acc-2) 50%, var(--acc));
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
-      filter: drop-shadow(0 0 60px rgba(124,92,255,0.4));
+      filter: drop-shadow(0 0 60px rgba(255,201,77,0.35));
       animation: pulse-glow 3s ease-in-out infinite;
     }
     @keyframes pulse-glow {
-      0%, 100% { filter: drop-shadow(0 0 40px rgba(124,92,255,0.3)); }
-      50% { filter: drop-shadow(0 0 80px rgba(124,92,255,0.6)) drop-shadow(0 0 120px rgba(33,212,253,0.3)); }
+      0%, 100% { filter: drop-shadow(0 0 40px rgba(255,201,77,0.25)); }
+      50% { filter: drop-shadow(0 0 80px rgba(255,201,77,0.55)) drop-shadow(0 0 120px rgba(67,182,255,0.3)); }
     }
 
     .cta-title {
@@ -788,17 +862,29 @@
       text-transform: uppercase;
       border: none;
       cursor: pointer;
-      background: linear-gradient(135deg, var(--acc), var(--acc-2));
-      color: #fff;
-      box-shadow: 0 8px 30px rgba(124,92,255,0.4);
+      background: linear-gradient(135deg, var(--gold), var(--acc-2));
+      color: #0a1533;
+      box-shadow: 0 8px 30px rgba(255,201,77,0.35);
       transition: all 0.3s ease;
       text-decoration: none;
       display: inline-block;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-btn::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -60%;
+      width: 40%; height: 100%;
+      background: linear-gradient(115deg, transparent, rgba(255,255,255,0.55), transparent);
+      transform: skewX(-20deg);
+      transition: left 0.6s ease;
     }
     .cta-btn:hover {
       transform: translateY(-3px);
-      box-shadow: 0 12px 40px rgba(124,92,255,0.5);
+      box-shadow: 0 12px 44px rgba(255,201,77,0.55);
     }
+    .cta-btn:hover::after { left: 130%; }
 
     .cta-url {
       margin-top: 24px;
@@ -812,7 +898,7 @@
       text-decoration: none;
       transition: color 0.2s;
     }
-    .cta-url a:hover { color: var(--up); }
+    .cta-url a:hover { color: var(--gold); }
 
     .cta-credit {
       margin-top: 48px;
@@ -871,6 +957,7 @@
   </style>
 </head>
 <body>
+  <button id="themeToggle" type="button" title="Toggle dark theme" aria-label="Toggle dark theme">&#9680;</button>
   <div class="ad-container">
 
     <!-- ═══════════ SCROLLING TICKER TOP ═══════════ -->
@@ -985,8 +1072,8 @@
             <svg class="mini-chart-svg" viewBox="0 0 200 70" preserveAspectRatio="none">
               <defs>
                 <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="var(--acc-2)" stop-opacity="0.3" />
-                  <stop offset="100%" stop-color="var(--acc-2)" stop-opacity="0" />
+                  <stop offset="0%" stop-color="var(--gold)" stop-opacity="0.35" />
+                  <stop offset="100%" stop-color="var(--gold)" stop-opacity="0" />
                 </linearGradient>
               </defs>
               <path class="chart-area" d="M0,60 L10,55 L25,50 L40,52 L55,42 L70,38 L85,40 L100,30 L115,28 L130,25 L145,22 L160,18 L175,15 L190,12 L200,10 L200,70 L0,70 Z" />
@@ -1374,6 +1461,43 @@
        SMOOTH SCROLL ENHANCEMENT
     ═══════════════════════════════════════════ */
     document.documentElement.style.scrollBehavior = 'smooth';
+
+    /* ═══════════════════════════════════════════
+       THEME TOGGLE (vibrant blue ⇄ dark)
+    ═══════════════════════════════════════════ */
+    const themeBtn = document.getElementById('themeToggle');
+    function applyTheme(theme) {
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        themeBtn.innerHTML = '&#9681;';
+      } else {
+        document.documentElement.removeAttribute('data-theme');
+        themeBtn.innerHTML = '&#9680;';
+      }
+    }
+    applyTheme(localStorage.getItem('pulsedesk.ad.theme') || 'vibrant');
+    themeBtn.addEventListener('click', () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'vibrant' : 'dark';
+      applyTheme(next);
+      localStorage.setItem('pulsedesk.ad.theme', next);
+    });
+
+    /* ═══════════════════════════════════════════
+       CURSOR-FOLLOWING AMBIENT GLOW
+    ═══════════════════════════════════════════ */
+    let glowX = 50, glowY = 20, glowTX = 50, glowTY = 20;
+    window.addEventListener('mousemove', (e) => {
+      glowTX = (e.clientX / window.innerWidth) * 100;
+      glowTY = (e.clientY / window.innerHeight) * 100;
+    });
+    function tickGlow() {
+      glowX += (glowTX - glowX) * 0.04;
+      glowY += (glowTY - glowY) * 0.04;
+      document.documentElement.style.setProperty('--px', glowX + '%');
+      document.documentElement.style.setProperty('--py', glowY + '%');
+      requestAnimationFrame(tickGlow);
+    }
+    requestAnimationFrame(tickGlow);
   </script>
 </body>
 </html>
