@@ -18,7 +18,7 @@
   };
 
   const DEFAULT_PORTFOLIO = { baseCurrency: 'INR', cash: 0, holdings: [], trades: [] };
-  const DEFAULT_SETTINGS = { compact: false, hyperMarket: 'both', alwaysOnTop: false, showOnAllDesktops: false, opacity: 1 };
+  const DEFAULT_SETTINGS = { compact: false, hyperMarket: 'both', alwaysOnTop: false, showOnAllDesktops: false, opacity: 1, theme: 'dark' };
 
   const read = (key, fallback) => {
     try {
@@ -93,6 +93,14 @@
     return hist.slice(-90);
   }
 
+  /** Mirrors dayBaseline() in src/services/portfolio.js — see the note there. */
+  function dayBaseline(h, prevClose) {
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
+    const openedToday = isFinite(h.buyTs) && h.buyTs >= midnight.getTime();
+    return openedToday ? { price: h.avgPrice, sinceBuy: true } : { price: prevClose, sinceBuy: false };
+  }
+
   async function valuate() {
     const p = portfolioStore.read();
     const base = p.baseCurrency || 'INR';
@@ -103,7 +111,10 @@
       quotes = await api(`/api/quotes?symbols=${encodeURIComponent(symbols.join(','))}`).catch(() => ({}));
     }
 
-    const currencies = [...new Set(Object.values(quotes).map((q) => q && q.currency).filter(Boolean))];
+    // Closed trades carry their own currency, and the ticker may be long gone from the holdings.
+    const currencies = [
+      ...new Set([...Object.values(quotes).map((q) => q && q.currency), ...(p.trades || []).map((t) => t.currency)].filter(Boolean))
+    ];
     const fx = { [base]: 1 };
     await Promise.all(
       currencies.map(async (c) => {
@@ -122,6 +133,7 @@
       const invested = h.qty * h.avgPrice * rate;
       const value = h.qty * price * rate;
       const pnl = value - invested;
+      const day = dayBaseline(h, prev);
       return {
         ...h,
         heldDays: h.buyTs ? Math.max(0, Math.round((Date.now() - h.buyTs) / 864e5)) : null,
@@ -134,7 +146,10 @@
         value,
         pnl,
         pnlPct: invested ? (pnl / invested) * 100 : 0,
-        dayPnl: h.qty * (price - prev) * rate,
+        dayPnl: h.qty * (price - day.price) * rate,
+        dayFrom: day.price,
+        dayPnlPct: day.price ? ((price - day.price) / day.price) * 100 : 0,
+        openedToday: day.sinceBuy,
         series: (q && q.series) || [],
         live: !!q
       };
@@ -143,17 +158,21 @@
     const invested = rows.reduce((a, r) => a + r.invested, 0);
     const value = rows.reduce((a, r) => a + r.value, 0);
     const dayPnl = rows.reduce((a, r) => a + r.dayPnl, 0);
+    const openedToday = rows.filter((r) => r.openedToday).length;
     const unrealised = value - invested;
 
     // Mirrors src/services/portfolio.js so web and desktop report identical numbers.
     const trades = (p.trades || [])
       .map((t) => {
-        const cost = t.buyPrice * t.qty;
-        const proceeds = t.sellPrice * t.qty - (t.fees || 0);
+        // Trades recorded before currency was captured are read as already being in base.
+        const rate = fx[t.currency] || 1;
+        const cost = t.buyPrice * t.qty * rate;
+        const proceeds = (t.sellPrice * t.qty - (t.fees || 0)) * rate;
         const pnl = proceeds - cost;
         return {
           ...t,
           ts: t.ts || (t.date ? Date.parse(t.date) : Date.now()),
+          fxRate: rate,
           cost,
           proceeds,
           pnl,
@@ -191,6 +210,8 @@
         totalPnlPct: totalCost ? (totalPnl / totalCost) * 100 : 0,
         dayPnl,
         dayPnlPct: value - dayPnl ? (dayPnl / (value - dayPnl)) * 100 : 0,
+        openedToday,
+        dayFromBuy: openedToday > 0 && openedToday === rows.length,
         positions: rows.length,
         winners,
         losers: rows.length - winners,
@@ -352,7 +373,7 @@
         return v;
       },
       /** Mirrors sellHolding() in src/services/portfolio.js — average buy price is left alone. */
-      sell: async (id, { qty, price, fees = 0, ts } = {}) => {
+      sell: async (id, { qty, price, fees = 0, ts, currency } = {}) => {
         const p = portfolioStore.read();
         const h = p.holdings.find((x) => x.id === id);
         if (!h) throw new Error('holding not found');
@@ -372,6 +393,7 @@
           buyPrice: h.avgPrice,
           sellPrice,
           fees: Number(fees) || 0,
+          currency: currency || null,
           ts: when,
           date: new Date(when).toISOString().slice(0, 10)
         });
@@ -443,7 +465,23 @@
     priceAt: async (symbol, ts) =>
       api(`/api/price-at?symbol=${encodeURIComponent(symbol)}&ts=${Math.round(Number(ts) / 60000) * 60000}`).catch((e) => ({ error: e.message })),
     history: async (symbol, range) =>
-      api(`/api/history?symbol=${encodeURIComponent(symbol)}&range=${encodeURIComponent(range)}`).catch((e) => ({ error: e.message }))
+      api(`/api/history?symbol=${encodeURIComponent(symbol)}&range=${encodeURIComponent(range)}`).catch((e) => ({ error: e.message })),
+    fx: async (from, to) => api(`/api/fx?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`).catch(() => ({ rate: 1 })),
+    /**
+     * No printToPDF in a browser, so the statement goes to the print dialog instead — every
+     * platform offers "Save as PDF" there, and the document never leaves the device either way.
+     */
+    exportPdf: async (html) => {
+      const w = window.open('', '_blank');
+      if (!w) return { canceled: true, error: 'popup blocked' };
+      w.document.write(html);
+      w.document.close();
+      w.addEventListener('load', () => {
+        w.focus();
+        w.print();
+      });
+      return { canceled: false };
+    }
   };
 
   /* --------------------------------- start --------------------------------- */
