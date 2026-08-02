@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://pulsedesk-api.dheeravtandon.workers.dev; manifest-src 'self';" />
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; manifest-src 'self';" />
   <title>PulseDesk</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#05060f" />
@@ -64,6 +64,7 @@
               <option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>JPY</option>
             </select>
             <button class="mini ghost" id="btnStatement" title="Save a PDF of everything you hold and everything you ever sold">Statement</button>
+            <button class="mini ghost" id="btnClear" title="Clear all holdings and trades" style="color:#ff4d6d">Clear</button>
             <button class="mini solid" id="btnAdd">+ Add holding</button>
           </div>
         </div>
@@ -245,6 +246,17 @@
           <input id="fAvg" type="number" step="any" min="0" placeholder="fetched automatically" />
         </label>
       </div>
+      <label style="display:block;margin-top:8px">Currency for buy price
+        <select id="fBuyCurrency" class="mini-select" style="width:100%">
+          <option value="NATIVE" selected>Native (share's currency)</option>
+          <option value="INR">INR (₹)</option>
+          <option value="USD">USD ($)</option>
+          <option value="EUR">EUR (€)</option>
+          <option value="GBP">GBP (£)</option>
+          <option value="AED">AED (د.إ)</option>
+          <option value="JPY">JPY (¥)</option>
+        </select>
+      </label>
 
       <div class="pay-row" id="payRow" hidden>
         <span class="pay-k">Money you are spending is in</span>
@@ -291,7 +303,18 @@
           <input id="sPrice" type="number" step="any" min="0" placeholder="fetched automatically" />
         </label>
       </div>
-      <label>Brokerage &amp; charges <span class="auto-tag">optional</span>
+      <label style="display:block;margin-top:8px">Currency for sell price
+        <select id="sSellCurrency" class="mini-select" style="width:100%">
+          <option value="NATIVE" selected>Native (share's currency)</option>
+          <option value="INR">INR (₹)</option>
+          <option value="USD">USD ($)</option>
+          <option value="EUR">EUR (€)</option>
+          <option value="GBP">GBP (£)</option>
+          <option value="AED">AED (د.إ)</option>
+          <option value="JPY">JPY (¥)</option>
+        </select>
+      </label>
+      <label style="margin-top:8px">Brokerage &amp; charges <span class="auto-tag">optional</span>
         <input id="sFees" type="number" step="any" min="0" placeholder="0" />
       </label>
 

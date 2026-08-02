@@ -331,6 +331,7 @@
         if (!symbol || !isFinite(qty) || qty <= 0 || !isFinite(avgPrice)) throw new Error('invalid holding');
         const buyTs = Number(h.buyTs) || Date.now();
         const buyDate = new Date(buyTs).toISOString().slice(0, 10);
+        const currency = h.currency || 'NATIVE';
         const existing = p.holdings.find((x) => x.symbol === symbol);
         if (existing) {
           const total = existing.qty + qty;
@@ -340,8 +341,9 @@
             existing.buyTs = buyTs;
             existing.buyDate = buyDate;
           }
+          existing.lots = (existing.lots || 1) + 1;
         } else {
-          p.holdings.push({ id: uid(), symbol, qty, avgPrice, buyTs, buyDate, name: h.name || null });
+          p.holdings.push({ id: uid(), symbol, qty, avgPrice, buyTs, buyDate, currency, name: h.name || null, lots: 1 });
         }
         portfolioStore.write(p);
         const v = await valuate();
@@ -425,6 +427,13 @@
       },
       import: async (data) => {
         portfolioStore.write({ ...DEFAULT_PORTFOLIO, ...data });
+        const v = await valuate();
+        emit({ portfolio: v });
+        return v;
+      },
+      clear: async () => {
+        const p = portfolioStore.read();
+        portfolioStore.write({ ...p, holdings: [], trades: [] });
         const v = await valuate();
         emit({ portfolio: v });
         return v;

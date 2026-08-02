@@ -1503,6 +1503,11 @@ function bind() {
 
   // add holding
   $('btnAdd').addEventListener('click', () => openAdd());
+  $('btnClear').addEventListener('click', async () => {
+    if (!confirm('Are you sure? This will clear all holdings and trades permanently.')) return;
+    const pf = await window.pulse.portfolio.clear();
+    if (pf) renderPortfolio(pf);
+  });
   $('btnCancelAdd').addEventListener('click', () => ($('modalAdd').hidden = true));
 
   $('btnBuyChart').addEventListener('click', () => toggleBuyChart());
@@ -1582,6 +1587,7 @@ function bind() {
   $('btnSaveAdd').addEventListener('click', async () => {
     const qty = effectiveQty();
     const avgPrice = parseFloat($('fAvg').value);
+    const buyCurrency = $('fBuyCurrency')?.value || 'NATIVE';
     if (!state.pick) {
       $('investPreview').innerHTML = '<span class="warn">Pick a company from the list first.</span>';
       return;
@@ -1595,7 +1601,8 @@ function bind() {
       name: state.pick.name,
       qty,
       avgPrice,
-      buyTs: buyTimestamp()
+      buyTs: buyTimestamp(),
+      currency: buyCurrency
     });
     if (pf) renderPortfolio(pf);
     $('modalAdd').hidden = true;
@@ -1656,11 +1663,12 @@ function bind() {
     const qty = sellQty();
     const price = parseFloat($('sPrice').value);
     const fees = parseFloat($('sFees').value) || 0;
+    const sellCurrency = $('sSellCurrency')?.value || row.currency;
     if (!isFinite(price) || price < 0) return alert('Enter the price you sold at.');
     if (!isFinite(qty) || qty <= 0) return alert('Enter how many you sold.');
     if (qty - row.qty > 1e-9) return alert(`You only hold ${num(row.qty, 4)} of ${shortSym(row.symbol)}.`);
     try {
-      const pf = await window.pulse.portfolio.sell(row.id, { qty, price, fees, ts: sellTimestamp(), currency: row.currency });
+      const pf = await window.pulse.portfolio.sell(row.id, { qty, price, fees, ts: sellTimestamp(), currency: sellCurrency });
       if (pf) renderPortfolio(pf);
       $('modalSell').hidden = true;
     } catch (err) {
