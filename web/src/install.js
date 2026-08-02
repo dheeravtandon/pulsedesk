@@ -31,7 +31,7 @@
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferred = e;
-    const cta = button('⬇ Install app', async () => {
+    const cta = button('Install app', async () => {
       cta.remove();
       deferred.prompt();
       await deferred.userChoice;
