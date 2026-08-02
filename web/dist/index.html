@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://pulsedesk-api.dheeravtandon.workers.dev; manifest-src 'self';" />
+  <title>PulseDesk</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#05060f" />
+  <meta name="description" content="Hyped stocks, portfolio P&amp;L with a printable statement, market news with rise/fall calls, 5-hour crypto pumps and world market clocks. Free, no login." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="PulseDesk" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="web.css" />
+</head>
+<body>
+  <div class="shell" id="shell">
+    <!-- title bar -->
+    <header class="titlebar" id="titlebar">
+      <div class="brand">
+        <span class="logo">◈</span>
+        <span class="brand-text">
+          <span class="wordmark">PULSE<b>DESK</b></span>
+          <span class="byline">by Dheerav Tandon</span>
+        </span>
+        <span class="pulse-chip" id="pulseChip">—</span>
+      </div>
+
+      <div class="titlebar-mid">
+        <span class="clock" id="clock">--:--</span>
+        <span class="dot"></span>
+        <span class="stamp" id="stamp">syncing…</span>
+      </div>
+
+      <div class="win-actions">
+        <button class="tb" id="btnTheme" title="Switch between light and dark">◐</button>
+        <button class="tb" id="btnRefresh" title="Refresh (Ctrl+Alt+R)">⟳</button>
+        <button class="tb" id="btnCompact" title="Compact mode">▤</button>
+        <button class="tb" id="btnSettings" title="Settings">⚙</button>
+        <button class="tb" id="btnFull" title="Full screen (F11)">⛶</button>
+        <button class="tb" id="btnMin" title="Minimise">—</button>
+        <button class="tb danger" id="btnHide" title="Hide to tray (Ctrl+Alt+P)">✕</button>
+      </div>
+    </header>
+
+    <!-- scrolling index tape -->
+    <div class="tape" id="tape"><div class="tape-track" id="tapeTrack"></div></div>
+
+    <main class="grid" id="grid">
+      <!-- PORTFOLIO -->
+      <section class="card span-4 h-pf" id="cardPortfolio">
+        <div class="card-head">
+          <h2>My Portfolio <span class="sub" id="pfSub">—</span></h2>
+          <div class="head-actions">
+            <div class="seg" id="curToggle">
+              <button type="button" data-cur="INR">₹ INR</button>
+              <button type="button" data-cur="USD">$ USD</button>
+            </div>
+            <select id="baseCur" class="mini-select" title="Other base currency">
+              <option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>JPY</option>
+            </select>
+            <button class="mini ghost" id="btnStatement" title="Save a PDF of everything you hold and everything you ever sold">Statement</button>
+            <button class="mini solid" id="btnAdd">+ Add holding</button>
+          </div>
+        </div>
+
+        <div class="pf-body">
+          <div class="pf-col">
+            <div class="pf-hero">
+              <div class="pf-hero-main">
+                <span class="k">Net worth</span>
+                <span class="v" id="pfNet">—</span>
+                <span class="d" id="pfDay">—</span>
+              </div>
+              <div class="pf-spark" id="pfSpark"></div>
+            </div>
+            <div class="pf-earned" id="pfEarned"></div>
+            <div class="stat-row" id="pfStats"></div>
+          </div>
+
+          <div class="pf-col alloc">
+            <div class="donut" id="donut"></div>
+            <div class="alloc-legend" id="allocLegend"></div>
+          </div>
+
+          <div class="pf-col">
+            <div class="pf-tabs" id="pfTabs">
+              <button type="button" class="active" data-pf="holdings">Holdings <span id="holdCount"></span></button>
+              <button type="button" data-pf="closed">Sold <span id="tradeCount"></span></button>
+            </div>
+            <div class="holdings" id="holdings"></div>
+            <div class="holdings" id="closedList" hidden></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HYPE -->
+      <section class="card span-4 h-sm" id="cardHype">
+        <div class="card-head">
+          <h2>Hype Radar <span class="sub">top 5 most-hyped stocks</span></h2>
+          <div class="head-actions">
+            <span class="badge live" id="hypeMeta">—</span>
+            <button class="mini ghost" id="btnHypeMore">Show all</button>
+          </div>
+        </div>
+        <div class="hype-grid" id="hypeGrid"></div>
+        <div class="disclaim">Hype ranks attention (volume + move + headlines), not direction. "Likely" calls are momentum reads. <b>Not investment advice.</b></div>
+      </section>
+
+      <!-- NEWS -->
+      <section class="card span-2 h-lg" id="cardNews">
+        <div class="card-head">
+          <h2>News Wire <span class="sub" id="newsSub">direction call</span></h2>
+          <div class="head-actions">
+            <button class="chip-btn active" data-filter="ALL">All</button>
+            <button class="chip-btn" data-filter="RISE">▲ Rise</button>
+            <button class="chip-btn" data-filter="FALL">▼ Fall</button>
+          </div>
+        </div>
+        <div class="news-bar" id="newsBar"></div>
+        <div class="news-list" id="newsList"></div>
+        <div class="disclaim">Direction calls read headline tone, not the future. <b>Not investment advice.</b></div>
+      </section>
+
+      <!-- CRYPTO -->
+      <section class="card span-2 h-lg" id="cardCrypto">
+        <div class="card-head">
+          <h2>Crypto <span class="sub" id="cryptoSub">last 5 hours · top 10</span></h2>
+          <div class="head-actions">
+            <button class="chip-btn active" data-crypto="pumps">Pumps 5h</button>
+            <button class="chip-btn" data-crypto="traded">Most bought</button>
+          </div>
+        </div>
+        <div class="crypto-list" id="cryptoList"></div>
+        <div class="crypto-foot" id="cryptoFoot"></div>
+      </section>
+
+      <!-- POPULAR & STABLE -->
+      <section class="card span-2 h-lg" id="cardPopular">
+        <div class="card-head">
+          <h2>Popular &amp; Steady <span class="sub">big names, ranked by how calm they are</span></h2>
+          <div class="head-actions">
+            <select id="popSector" class="mini-select" title="Filter by sector"><option value="ALL">All sectors</option></select>
+            <button class="chip-btn active" data-pop="ALL">All</button>
+            <button class="chip-btn" data-pop="IN">India</button>
+            <button class="chip-btn" data-pop="US">US</button>
+          </div>
+        </div>
+        <div class="pop-list" id="popList"></div>
+        <div class="disclaim">Steadiness = 1-year annualised volatility. Lower means the price swings less. <b>Not advice.</b></div>
+      </section>
+
+      <!-- MUTUAL FUNDS -->
+      <section class="card span-2 h-lg" id="cardFunds">
+        <div class="card-head">
+          <h2>Mutual Funds <span class="sub">popular direct-growth schemes</span></h2>
+          <div class="head-actions">
+            <select id="fundFilter" class="mini-select" title="Filter by category">
+              <option value="ALL">All categories</option>
+              <option value="Flexi Cap">Flexi Cap</option>
+              <option value="Large Cap">Large Cap</option>
+              <option value="Mid Cap">Mid Cap</option>
+              <option value="Small Cap">Small Cap</option>
+              <option value="Index">Index</option>
+              <option value="Hybrid">Hybrid</option>
+              <option value="Debt">Debt</option>
+            </select>
+          </div>
+        </div>
+        <div class="fund-list" id="fundList"></div>
+        <div class="disclaim">NAV updates once a day after markets close. <b>Not investment advice.</b></div>
+      </section>
+
+      <!-- MARKET CLOCKS -->
+      <section class="card span-4 h-xs" id="cardSide">
+        <div class="card-head"><h2>Market Clocks <span class="sub">click one for its full trading schedule</span></h2></div>
+        <div class="sessions" id="sessions"></div>
+      </section>
+    </main>
+
+    <footer class="statusbar">
+      <span id="errBar" class="err"></span>
+      <span class="spacer"></span>
+      <span class="hint">Ctrl+Alt+P hide · Ctrl+Alt+R refresh · F11 full screen</span>
+      <span class="credit">created by <b>Dheerav Tandon</b></span>
+    </footer>
+  </div>
+
+  <!-- add holding modal -->
+  <div class="modal-backdrop" id="modalAdd" hidden>
+    <div class="modal wide">
+      <h3>Add a holding</h3>
+
+      <label>Search a company or ticker
+        <input id="fSymbol" placeholder="Type: reliance, tata, apple, bitcoin…" autocomplete="off" spellcheck="false" />
+      </label>
+      <div class="suggest" id="suggest" hidden></div>
+      <div class="picked" id="picked" hidden></div>
+
+      <div class="pick-actions" id="pickActions" hidden>
+        <button type="button" class="mini ghost" id="btnBuyChart">Show graph</button>
+        <span class="pick-hint">Full price history — ranges, axes and hover readout.</span>
+      </div>
+
+      <div class="buy-chart" id="buyChart" hidden>
+        <div class="bc-head">
+          <span class="bc-price" id="bcPrice">loading…</span>
+          <div class="seg tiny" id="bcRange">
+            <button type="button" data-r="1D" class="active">1D</button>
+            <button type="button" data-r="5D">5D</button>
+            <button type="button" data-r="1M">1M</button>
+            <button type="button" data-r="6M">6M</button>
+            <button type="button" data-r="1Y">1Y</button>
+            <button type="button" data-r="5Y">5Y</button>
+          </div>
+        </div>
+        <div class="chart-box small" id="bcBox">
+          <svg id="bcSvg" viewBox="0 0 700 260"></svg>
+          <div class="ch-tip" id="bcTip" hidden></div>
+        </div>
+      </div>
+
+      <div class="pick-news" id="pickNews" hidden></div>
+
+      <label>When did you buy it?</label>
+      <div class="seg wide-seg" id="whenToggle">
+        <button type="button" data-when="now" class="active">Right now</button>
+        <button type="button" data-when="past">Pick date &amp; time</button>
+      </div>
+      <label id="whenPickWrap" hidden>Purchase date &amp; time
+        <input id="fWhen" type="datetime-local" />
+      </label>
+
+      <div class="seg wide-seg" id="qtyMode">
+        <button type="button" data-mode="qty" class="active">By quantity</button>
+        <button type="button" data-mode="amount">By amount invested</button>
+      </div>
+      <div class="row2">
+        <label id="qtyLabelWrap">Quantity <input id="fQty" type="number" step="any" min="0" placeholder="10" /></label>
+        <label>Buy price <span class="auto-tag" id="priceTag">auto</span>
+          <input id="fAvg" type="number" step="any" min="0" placeholder="fetched automatically" />
+        </label>
+      </div>
+
+      <div class="pay-row" id="payRow" hidden>
+        <span class="pay-k">Money you are spending is in</span>
+        <div class="seg" id="payCur">
+          <button type="button" data-pay="INR">₹ INR</button>
+          <button type="button" data-pay="NATIVE" class="active">native</button>
+        </div>
+        <span class="pay-fx" id="payFx"></span>
+      </div>
+
+      <div class="invest-preview" id="investPreview"></div>
+
+      <div class="modal-actions">
+        <button class="mini ghost" id="btnCancelAdd">Cancel</button>
+        <button class="mini solid" id="btnSaveAdd">Save holding</button>
+      </div>
+      <p class="tip">Price fills in from the market automatically — for “right now” it uses the live price, for a past date it uses the price at that moment. You can always type your own.</p>
+    </div>
+  </div>
+
+  <!-- sell modal -->
+  <div class="modal-backdrop" id="modalSell" hidden>
+    <div class="modal">
+      <h3>Sell holding</h3>
+      <div class="sell-head" id="sellHead"></div>
+
+      <label>When did you sell it?</label>
+      <div class="seg wide-seg" id="sellWhenToggle">
+        <button type="button" data-when="now" class="active">Right now</button>
+        <button type="button" data-when="past">Pick date &amp; time</button>
+      </div>
+      <label id="sellWhenWrap" hidden>Sale date &amp; time
+        <input id="sWhen" type="datetime-local" />
+      </label>
+
+      <div class="seg wide-seg" id="sellQtyMode">
+        <button type="button" data-mode="qty" class="active">By quantity</button>
+        <button type="button" data-mode="amount">By amount received</button>
+        <button type="button" data-mode="all">Sell everything</button>
+      </div>
+      <div class="row2">
+        <label id="sellQtyLabel">Quantity <input id="sQty" type="number" step="any" min="0" placeholder="10" /></label>
+        <label>Sell price <span class="auto-tag" id="sellPriceTag">auto</span>
+          <input id="sPrice" type="number" step="any" min="0" placeholder="fetched automatically" />
+        </label>
+      </div>
+      <label>Brokerage &amp; charges <span class="auto-tag">optional</span>
+        <input id="sFees" type="number" step="any" min="0" placeholder="0" />
+      </label>
+
+      <div class="invest-preview" id="sellPreview"></div>
+
+      <div class="modal-actions">
+        <button class="mini ghost" id="btnCancelSell">Cancel</button>
+        <button class="mini danger-solid" id="btnConfirmSell">Confirm sale</button>
+      </div>
+      <p class="tip">Selling books the profit or loss into <b>Realised P&amp;L</b>. Sell part of a position and the rest keeps its original buy price.</p>
+    </div>
+  </div>
+
+  <!-- settings modal -->
+  <div class="modal-backdrop" id="modalSet" hidden>
+    <div class="modal">
+      <h3>Settings</h3>
+      <div class="row2">
+        <label class="desktop-only">Always on top <input id="sTop" type="checkbox" /></label>
+        <label class="desktop-only">All desktops <input id="sAll" type="checkbox" /></label>
+      </div>
+      <label class="desktop-only">Opacity <input id="sOpacity" type="range" min="0.4" max="1" step="0.05" /></label>
+      <label>Hype universe
+        <select id="sMarket"><option value="both">India + US</option><option value="IN">India only</option><option value="US">US only</option></select>
+      </label>
+      <label>Cash / idle funds <input id="sCash" type="number" step="any" placeholder="0" /></label>
+      <div class="modal-actions">
+        <button class="mini ghost" id="btnCloseSet">Close</button>
+        <button class="mini solid" id="btnSaveSet">Apply</button>
+      </div>
+      <p class="tip">Created by <b>Dheerav Tandon</b> · free to use · your holdings never leave this device.</p>
+    </div>
+  </div>
+
+  <!-- stock detail chart -->
+  <div class="modal-backdrop" id="modalChart" hidden>
+    <div class="modal wide">
+      <div class="chart-head">
+        <div>
+          <h3 id="chSym">—</h3>
+          <div class="chart-sub" id="chSub">—</div>
+        </div>
+        <button class="tb" id="btnCloseChart" title="Close">✕</button>
+      </div>
+      <div class="chart-price" id="chPrice">—</div>
+      <div class="chart-box" id="chBox">
+        <svg id="chSvg" viewBox="0 0 700 260"></svg>
+        <div class="ch-tip" id="chTip" hidden></div>
+      </div>
+      <div class="seg wide-seg" id="chRange">
+        <button type="button" data-r="1D" class="active">1D</button>
+        <button type="button" data-r="5D">5D</button>
+        <button type="button" data-r="1M">1M</button>
+        <button type="button" data-r="6M">6M</button>
+        <button type="button" data-r="1Y">1Y</button>
+        <button type="button" data-r="5Y">5Y</button>
+      </div>
+      <div class="col-label">Recent news</div>
+      <div class="pick-news" id="chNews"></div>
+      <div class="modal-actions">
+        <button class="mini ghost" id="btnCloseChart2">Close</button>
+        <button class="mini solid" id="btnAddFromChart">+ Add to portfolio</button>
+      </div>
+      <p class="tip">Chart and calls are pattern reads on past prices — not a forecast, not financial advice.</p>
+    </div>
+  </div>
+
+  <!-- market session detail -->
+  <div class="modal-backdrop" id="modalSession" hidden>
+    <div class="modal">
+      <div class="chart-head">
+        <div>
+          <h3 id="seName">—</h3>
+          <div class="chart-sub" id="seWhere">—</div>
+        </div>
+        <button class="tb" id="btnCloseSession" title="Close">✕</button>
+      </div>
+
+      <div class="se-now" id="seNow"></div>
+      <div class="se-bar" id="seBar"></div>
+      <div class="se-grid" id="seGrid"></div>
+
+      <div class="modal-actions"><button class="mini solid" id="btnCloseSession2">Close</button></div>
+      <p class="tip">Regular trading hours only. Pre-market, after-hours and exchange holidays are not counted.</p>
+    </div>
+  </div>
+
+  <!-- all scanned stocks -->
+  <div class="modal-backdrop" id="modalHypeAll" hidden>
+    <div class="modal wide">
+      <h3>All scanned stocks <span class="sub" id="hypeAllCount"></span></h3>
+      <div class="hype-all-list" id="hypeAllList"></div>
+      <div class="disclaim">Hype ranks attention, not direction. "Likely" calls read momentum + volume — not financial advice.</div>
+      <div class="modal-actions"><button class="mini solid" id="btnCloseHypeAll">Close</button></div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="web-bridge.js"></script>
+  <script src="app.js"></script>
+  <script src="install.js"></script>
+</body>
+</html>
