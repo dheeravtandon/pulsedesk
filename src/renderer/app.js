@@ -883,7 +883,7 @@ async function updatePreview() {
   const sameChurrency = state.buyPriceCur === payCurrency();
   const cur = sameChurrency ? state.buyPriceCur : nativeCur();
   const sym = SYMBOLS[cur] || '';
-  const displayPrice = sameChurrency ? parseFloat($('fAvg').value) : price;
+  const displayPrice = sameChurrency ? (price * (state.buyPriceRate || 1)) : price;
   const invested = qty * displayPrice;
   const when = state.whenMode === 'now' ? 'right now' : state.priceInfo ? dateLabel(state.priceInfo.at) : 'that date';
   const pay = payCurrency();
