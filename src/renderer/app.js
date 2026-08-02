@@ -1271,7 +1271,7 @@ function buildStatementHtml() {
   body { font-family: 'Segoe UI', Helvetica, Arial, sans-serif; color: #12162a; background: #fff; margin: 0; padding: 14px; font-size: 10px; }
   h1 { font-size: 20px; letter-spacing: 3px; margin: 0; }
   h1 b { color: #4b32d6; }
-  .h1-by { font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; color: #5a6180; margin-top: 2px; font-weight: 600; }
+  .h1-by { font-size: 10.5px; letter-spacing: 2px; text-transform: uppercase; color: #4b32d6; margin-bottom: 3px; font-weight: 700; }
   h2 { font-size: 12px; letter-spacing: 1.6px; text-transform: uppercase; margin: 22px 0 7px; color: #4b32d6;
        border-bottom: 1.5px solid #4b32d6; padding-bottom: 4px; }
   .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2.5px solid #12162a; padding-bottom: 9px; }
@@ -1297,8 +1297,8 @@ function buildStatementHtml() {
 <body>
   <div class="head">
     <div>
-      <h1>PULSE<b>DESK</b></h1>
       <div class="h1-by">by Dheerav Tandon</div>
+      <h1>PULSE<b>DESK</b></h1>
       <div style="font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:#5a6180;margin-top:3px">Portfolio statement</div>
     </div>
     <div class="meta">
