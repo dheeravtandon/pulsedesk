@@ -364,6 +364,11 @@ function registerIpc() {
     await refreshFast();
     return payload.portfolio;
   });
+  ipcMain.handle('portfolio:clear', async () => {
+    portfolio.replace({ ...portfolio.read(), holdings: [], trades: [] });
+    await refreshFast();
+    return payload.portfolio;
+  });
   ipcMain.handle('portfolio:import', async (_e, data) => {
     portfolio.replace(data);
     await refreshFast();

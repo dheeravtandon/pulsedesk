@@ -9,8 +9,7 @@ workers_dev = true
 [[d1_databases]]
 binding = "DB"
 database_name = "pulsedesk"
-# Replace after running: npx wrangler d1 create pulsedesk
-database_id = "REPLACE_WITH_YOUR_D1_ID"
+database_id = "3fbe7dce-fc54-40d6-9b86-99d3c8abf0ea"
 
 [observability]
 enabled = true
