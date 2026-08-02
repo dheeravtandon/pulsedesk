@@ -12,15 +12,21 @@ const market = require('./src/services/market');
 const mutualfunds = require('./src/services/mutualfunds');
 const { appIcon } = require('./src/services/icon');
 
+/** Bump when a stored setting must be forced back to its new default. */
+const SETTINGS_VERSION = 3;
+
 const DEFAULT_SETTINGS = {
   bounds: null,
-  alwaysOnTop: true,
+  // Off by default: a window that outranks everything else makes the rest of the desktop
+  // feel unusable. Turn it on deliberately from the tray or Settings.
+  alwaysOnTop: false,
   opacity: 1,
   clickThrough: false,
   compact: false,
-  showOnAllDesktops: true,
+  showOnAllDesktops: false,
   hyperMarket: 'both',
-  refresh: { fast: 60, medium: 300 }
+  refresh: { fast: 60, medium: 300 },
+  settingsVersion: SETTINGS_VERSION
 };
 
 let win = null;
@@ -33,12 +39,40 @@ let iconImage = null;
 
 /* ---------- settings ---------- */
 
+/**
+ * Settings written by older builds are merged over the defaults, so a value that used to
+ * default to true stays true forever unless it is migrated. `settingsVersion` records how
+ * far a file has been brought forward.
+ *
+ * The version is read from the file on disk, never from the merged object — the defaults
+ * carry the current version, which would make every old file look already-migrated.
+ */
+function migrateSettings(merged, storedVersion) {
+  if (storedVersion < SETTINGS_VERSION) {
+    // Pinning is opt-in, and the weather tier no longer exists.
+    merged.alwaysOnTop = false;
+    merged.showOnAllDesktops = false;
+    delete merged.weather;
+    if (merged.refresh) delete merged.refresh.slow;
+  }
+  merged.settingsVersion = SETTINGS_VERSION;
+  return merged;
+}
+
 function loadSettings() {
   settingsPath = path.join(app.getPath('userData'), 'settings.json');
+  let stored = {};
   try {
-    settings = { ...DEFAULT_SETTINGS, ...JSON.parse(fs.readFileSync(settingsPath, 'utf8')) };
+    stored = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
   } catch {
-    settings = { ...DEFAULT_SETTINGS };
+    // No file yet: a fresh install already matches the current defaults.
+    stored = { settingsVersion: SETTINGS_VERSION };
+  }
+  settings = migrateSettings({ ...DEFAULT_SETTINGS, ...stored }, Number(stored.settingsVersion) || 0);
+  try {
+    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf8');
+  } catch {
+    /* first run may race the userData folder; the next save will catch up */
   }
   return settings;
 }
@@ -109,8 +143,11 @@ function createWindow() {
 
 function applyWindowState() {
   if (!win) return;
-  win.setAlwaysOnTop(!!settings.alwaysOnTop, 'screen-saver');
-  win.setVisibleOnAllWorkspaces(!!settings.showOnAllDesktops, { visibleOnFullScreen: true });
+  // 'floating' sits above ordinary windows but still yields to fullscreen apps and system
+  // UI. 'screen-saver' outranks everything, which is why the window used to stay stuck on
+  // screen no matter what you switched to.
+  win.setAlwaysOnTop(!!settings.alwaysOnTop, 'floating');
+  win.setVisibleOnAllWorkspaces(!!settings.showOnAllDesktops, { visibleOnFullScreen: false });
   win.setOpacity(Number(settings.opacity) || 1);
   win.setIgnoreMouseEvents(!!settings.clickThrough, { forward: true });
 }
@@ -308,6 +345,11 @@ function registerIpc() {
   });
   ipcMain.handle('portfolio:remove', async (_e, { id, sellPrice }) => {
     portfolio.removeHolding(id, sellPrice);
+    await refreshFast();
+    return payload.portfolio;
+  });
+  ipcMain.handle('portfolio:sell', async (_e, { id, sale }) => {
+    portfolio.sellHolding(id, sale);
     await refreshFast();
     return payload.portfolio;
   });
