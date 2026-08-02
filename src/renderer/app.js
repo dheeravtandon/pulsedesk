@@ -816,6 +816,37 @@ async function refreshPayFx() {
     : 'live rate unavailable — treating it as 1:1';
 }
 
+/**
+ * The two currency pickers ("buy price is typed in" and "money you are spending is in") describe
+ * the same purchase, so picking one should move the other — otherwise "₹" in one box and "$" in
+ * the other reads as a mismatch even though the user only meant to say "I'm paying in rupees".
+ * payCur only ever offers INR or the share's native currency, so sync is skipped when the buy-price
+ * currency is something neither of those (e.g. EUR on a USD stock) — there is no matching option.
+ */
+async function syncPayFromBuy(cur) {
+  const row = $('payRow');
+  if (!row || row.hidden) return;
+  const native = nativeCur();
+  const target = cur === 'NATIVE' || cur === native ? 'NATIVE' : cur === 'INR' ? 'INR' : null;
+  if (!target || target === state.payCur) return;
+  state.payCur = target;
+  document.querySelectorAll('#payCur button').forEach((b) => b.classList.toggle('active', b.dataset.pay === target));
+  await refreshPayFx();
+}
+
+async function syncBuyFromPay(pay) {
+  const sel = $('fBuyCurrency');
+  if (!sel || sel.value === pay) return;
+  const nativeVal = nativeBuyPrice();
+  state.buyPriceCur = pay;
+  sel.value = pay;
+  await refreshBuyPriceFx();
+  if (isFinite(nativeVal)) {
+    const shown = state.buyPriceCur === 'NATIVE' ? nativeVal : nativeVal / (state.buyPriceRate || 1);
+    $('fAvg').value = Number(shown.toFixed(shown < 10 ? 6 : 2));
+  }
+}
+
 /** In "by amount" mode the field holds money, not shares — the quantity is derived from the price. */
 function effectiveQty() {
   const raw = parseFloat($('fQty').value);
@@ -1627,6 +1658,7 @@ function bind() {
     state.payCur = pay;
     document.querySelectorAll('#payCur button').forEach((b) => b.classList.toggle('active', b.dataset.pay === pay));
     await refreshPayFx();
+    await syncBuyFromPay(pay);
     updatePreview();
   });
 
@@ -1687,6 +1719,7 @@ function bind() {
       const shown = state.buyPriceCur === 'NATIVE' ? nativeVal : nativeVal / (state.buyPriceRate || 1);
       $('fAvg').value = Number(shown.toFixed(shown < 10 ? 6 : 2));
     }
+    await syncPayFromBuy(state.buyPriceCur);
     updatePreview();
   });
 
