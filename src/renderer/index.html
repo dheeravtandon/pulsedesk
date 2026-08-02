@@ -97,7 +97,7 @@
       <!-- NEWS -->
       <section class="card span-2 h-lg" id="cardNews">
         <div class="card-head">
-          <h2>📰 News Wire <span class="sub">top 15 · direction call</span></h2>
+          <h2>📰 News Wire <span class="sub" id="newsSub">direction call</span></h2>
           <div class="head-actions">
             <button class="chip-btn active" data-filter="ALL">All</button>
             <button class="chip-btn" data-filter="RISE">▲ Rise</button>
@@ -158,20 +158,10 @@
         <div class="disclaim">NAV updates once a day after markets close. <b>Not investment advice.</b></div>
       </section>
 
-      <!-- WEATHER + MARKETS -->
-      <section class="card span-4 h-lg" id="cardSide">
-        <div class="card-head"><h2>🌍 Weather &amp; Markets <span class="sub" id="wxCity">—</span></h2></div>
-        <div class="wx-body">
-          <div class="wx-col">
-            <div class="wx" id="wx"></div>
-            <div class="col-label">Financial hubs</div>
-            <div class="fin-cities" id="finCities"></div>
-          </div>
-          <div class="wx-col">
-            <div class="col-label">Market clocks</div>
-            <div class="sessions" id="sessions"></div>
-          </div>
-        </div>
+      <!-- MARKET CLOCKS -->
+      <section class="card span-4" id="cardSide">
+        <div class="card-head"><h2>🕒 Market Clocks <span class="sub">when each exchange trades</span></h2></div>
+        <div class="sessions" id="sessions"></div>
       </section>
     </main>
 
@@ -237,10 +227,6 @@
       <label>Hype universe
         <select id="sMarket"><option value="both">India + US</option><option value="IN">India only</option><option value="US">US only</option></select>
       </label>
-      <div class="row2">
-        <label>Weather lat <input id="sLat" type="number" step="any" placeholder="auto" /></label>
-        <label>Weather lon <input id="sLon" type="number" step="any" placeholder="auto" /></label>
-      </div>
       <label>Cash / idle funds <input id="sCash" type="number" step="any" placeholder="0" /></label>
       <div class="modal-actions">
         <button class="mini ghost" id="btnCloseSet">Close</button>

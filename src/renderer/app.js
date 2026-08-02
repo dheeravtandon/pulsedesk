@@ -390,49 +390,6 @@ function renderFunds(rows) {
     : '<div class="empty">Nothing in this filter.</div>';
 }
 
-function renderCities(rows) {
-  const el = $('finCities');
-  if (!el) return;
-  el.innerHTML = (rows || [])
-    .map(
-      (c) => `<div class="fc">
-      <span class="fc-f">${esc(c.flag)}</span>
-      <span class="fc-n">${esc(c.name)}</span>
-      <span class="fc-i">${esc(c.icon)}</span>
-      <span class="fc-t">${c.tempC != null ? Math.round(c.tempC) + '°' : '—'}</span>
-    </div>`
-    )
-    .join('');
-}
-
-function renderWeather(w) {
-  if (!w) return;
-  $('wxCity').textContent = w.city || '';
-  const cells = [
-    ['Feels', `${num(w.feelsC, 0)}°`],
-    ['Humidity', `${num(w.humidity, 0)}%`],
-    ['Wind', `${num(w.windKph, 0)} km/h`],
-    ['Rain', `${num(w.rainChance, 0)}%`],
-    ['UV', num(w.uv, 1)],
-    ['AQI', w.aqi != null ? num(w.aqi, 0) : '—'],
-    ['Sunrise', (w.sunrise || '').slice(11, 16) || '—'],
-    ['Sunset', (w.sunset || '').slice(11, 16) || '—']
-  ];
-  $('wx').innerHTML = `
-    <div class="wx-top">
-      <div class="wx-ico">${esc(w.icon)}</div>
-      <div style="min-width:0">
-        <div class="wx-t">${num(w.tempC, 1)}°C</div>
-        <div class="wx-d">${esc(w.desc)} · H ${num(w.maxC, 0)}° / L ${num(w.minC, 0)}°</div>
-        <div class="wx-f">${w.aqiBand ? `Air: ${esc(w.aqiBand)}` : ''}${w.pm25 != null ? ` · PM2.5 ${num(w.pm25, 0)}` : ''}</div>
-      </div>
-    </div>
-    <div class="wx-grid">${cells.map(([k, v]) => `<div class="wx-cell"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join('')}</div>
-    <div class="wx-hours">${(w.hourly || [])
-      .map((h) => `<div class="wx-hr">${esc((h.time || '').slice(11, 16))}<b>${num(h.temp, 0)}°</b>${h.icon}</div>`)
-      .join('')}</div>`;
-}
-
 function renderSessions(m) {
   if (!m || !m.sessions) return;
   $('sessions').innerHTML = m.sessions
@@ -450,8 +407,11 @@ function renderSessions(m) {
 
 function renderNews(n) {
   if (!n) return;
-  const items = (n.items || []).filter((i) => state.newsFilter === 'ALL' || i.direction === state.newsFilter);
+  const all = n.items || [];
+  const items = all.filter((i) => state.newsFilter === 'ALL' || i.direction === state.newsFilter);
   const c = n.counts || {};
+  const sub = $('newsSub');
+  if (sub) sub.textContent = `${all.length} headlines · direction call`;
   const tot = Math.max(1, (c.bullish || 0) + (c.bearish || 0) + (c.neutral || 0));
   $('newsBar').innerHTML = `<span>${c.scanned || 0} scanned</span>
     <span class="news-seg">
@@ -504,8 +464,6 @@ function render(patch) {
   if (patch.crypto) renderCrypto(d.crypto);
   if (patch.popular) renderPopular(d.popular);
   if (patch.funds) renderFunds(d.funds);
-  if (patch.weather) renderWeather(d.weather);
-  if (patch.cities) renderCities(d.cities);
   if (patch.market) {
     renderSessions(d.market);
     renderPulse(d.market);
@@ -943,22 +901,17 @@ function bind() {
     $('sAll').checked = !!s.showOnAllDesktops;
     $('sOpacity').value = s.opacity || 1;
     $('sMarket').value = s.hyperMarket || 'both';
-    $('sLat').value = (s.weather && s.weather.lat) || '';
-    $('sLon').value = (s.weather && s.weather.lon) || '';
     $('sCash').value = p.cash || 0;
     $('modalSet').hidden = false;
   });
   $('btnCloseSet').addEventListener('click', () => ($('modalSet').hidden = true));
   $('btnSaveSet').addEventListener('click', async () => {
-    const lat = parseFloat($('sLat').value);
-    const lon = parseFloat($('sLon').value);
     try {
       await window.pulse.settings.set({
         alwaysOnTop: $('sTop').checked,
         showOnAllDesktops: $('sAll').checked,
         opacity: parseFloat($('sOpacity').value),
-        hyperMarket: $('sMarket').value,
-        weather: { lat: isFinite(lat) ? lat : null, lon: isFinite(lon) ? lon : null }
+        hyperMarket: $('sMarket').value
       });
       const pf = await window.pulse.portfolio.setCash(parseFloat($('sCash').value) || 0);
       if (pf) renderPortfolio(pf);

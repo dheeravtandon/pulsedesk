@@ -393,34 +393,7 @@ button, .chip-btn, .mini, .add, .x, .clear { touch-action: manipulation; -webkit
 .fund .s { font-size: 11px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fund .t { font-size: 8.5px; color: var(--txt-mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* ---------- weather + sessions ---------- */
-
-.wx-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; }
-.wx-col { display: flex; flex-direction: column; gap: 9px; min-width: 0; overflow-y: auto; padding-right: 2px; }
-
-.fin-cities { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 3px; }
-.fc {
-  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 2px;
-  background: rgba(255, 255, 255, .035); border-radius: 10px; padding: 7px 10px; min-width: 58px;
-}
-.fc-f { font-size: 13px; }
-.fc-n { font-size: 8px; color: var(--txt-mute); white-space: nowrap; }
-.fc-i { font-size: 16px; line-height: 1.1; }
-.fc-t { font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
-
-.wx { display: flex; flex-direction: column; gap: 9px; }
-.wx-top { display: flex; align-items: center; gap: 12px; }
-.wx-ico { font-size: 40px; line-height: 1; filter: drop-shadow(0 4px 14px rgba(33, 212, 253, 0.4)); }
-.wx-t { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
-.wx-d { font-size: 11px; color: var(--txt-dim); }
-.wx-f { font-size: 9.5px; color: var(--txt-mute); }
-.wx-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-.wx-cell { background: rgba(255, 255, 255, 0.035); border-radius: 9px; padding: 6px 5px; text-align: center; }
-.wx-cell .k { font-size: 8px; letter-spacing: 0.8px; color: var(--txt-mute); text-transform: uppercase; display: block; }
-.wx-cell .v { font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.wx-hours { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 3px; }
-.wx-hr { flex: 0 0 auto; text-align: center; background: rgba(255,255,255,0.03); border-radius: 8px; padding: 5px 7px; font-size: 9px; color: var(--txt-dim); }
-.wx-hr b { display: block; font-size: 11px; color: var(--txt); font-variant-numeric: tabular-nums; }
+/* ---------- market clocks ---------- */
 
 .sessions { display: flex; flex-direction: column; gap: 4px; }
 .ses { display: flex; align-items: center; gap: 8px; font-size: 10.5px; padding: 4px 7px; border-radius: 8px; background: rgba(255,255,255,0.03); }
@@ -587,7 +560,7 @@ button, .chip-btn, .mini, .add, .x, .clear { touch-action: manipulation; -webkit
 body.compact .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 body.compact .span-4 { grid-column: span 2; }
 body.compact .hype-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-body.compact .pf-spark, body.compact .wx-hours { display: none; }
+body.compact .pf-spark { display: none; }
 body.compact .pf-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 body.compact .alloc { display: none; }
 body.compact .h-lg { min-height: 320px; }
@@ -605,7 +578,6 @@ body.compact .h-md { min-height: 260px; }
   .hype-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .h-sm { min-height: 300px; }
   .h-lg { min-height: 500px; }
-  .wx-body { grid-template-columns: 1fr; }
 }
 @media (max-width: 620px) {
   .grid { grid-template-columns: minmax(0, 1fr); }
