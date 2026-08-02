@@ -27,6 +27,7 @@
       </div>
 
       <div class="win-actions">
+        <button class="tb" id="btnTheme" title="Switch between light and dark">◐</button>
         <button class="tb" id="btnRefresh" title="Refresh (Ctrl+Alt+R)">⟳</button>
         <button class="tb" id="btnCompact" title="Compact mode">▤</button>
         <button class="tb" id="btnSettings" title="Settings">⚙</button>
@@ -41,9 +42,9 @@
 
     <main class="grid" id="grid">
       <!-- PORTFOLIO -->
-      <section class="card span-4 h-md" id="cardPortfolio">
+      <section class="card span-4 h-pf" id="cardPortfolio">
         <div class="card-head">
-          <h2>💼 My Portfolio <span class="sub" id="pfSub">—</span></h2>
+          <h2>My Portfolio <span class="sub" id="pfSub">—</span></h2>
           <div class="head-actions">
             <div class="seg" id="curToggle">
               <button type="button" data-cur="INR">₹ INR</button>
@@ -52,6 +53,7 @@
             <select id="baseCur" class="mini-select" title="Other base currency">
               <option>INR</option><option>USD</option><option>EUR</option><option>GBP</option><option>AED</option><option>JPY</option>
             </select>
+            <button class="mini ghost" id="btnStatement" title="Save a PDF of everything you hold and everything you ever sold">Statement</button>
             <button class="mini solid" id="btnAdd">+ Add holding</button>
           </div>
         </div>
@@ -89,20 +91,20 @@
       <!-- HYPE -->
       <section class="card span-4 h-sm" id="cardHype">
         <div class="card-head">
-          <h2>🔥 Hype Radar <span class="sub">top 5 most-hyped stocks</span></h2>
+          <h2>Hype Radar <span class="sub">top 5 most-hyped stocks</span></h2>
           <div class="head-actions">
             <span class="badge live" id="hypeMeta">—</span>
             <button class="mini ghost" id="btnHypeMore">Show all</button>
           </div>
         </div>
         <div class="hype-grid" id="hypeGrid"></div>
-        <div class="disclaim">🔥 Hype ranks attention (volume + move + headlines), not direction. "Likely" calls are momentum reads. <b>Not investment advice.</b></div>
+        <div class="disclaim">Hype ranks attention (volume + move + headlines), not direction. "Likely" calls are momentum reads. <b>Not investment advice.</b></div>
       </section>
 
       <!-- NEWS -->
       <section class="card span-2 h-lg" id="cardNews">
         <div class="card-head">
-          <h2>📰 News Wire <span class="sub" id="newsSub">direction call</span></h2>
+          <h2>News Wire <span class="sub" id="newsSub">direction call</span></h2>
           <div class="head-actions">
             <button class="chip-btn active" data-filter="ALL">All</button>
             <button class="chip-btn" data-filter="RISE">▲ Rise</button>
@@ -117,7 +119,7 @@
       <!-- CRYPTO -->
       <section class="card span-2 h-lg" id="cardCrypto">
         <div class="card-head">
-          <h2>🚀 Crypto <span class="sub" id="cryptoSub">last 5 hours · top 10</span></h2>
+          <h2>Crypto <span class="sub" id="cryptoSub">last 5 hours · top 10</span></h2>
           <div class="head-actions">
             <button class="chip-btn active" data-crypto="pumps">Pumps 5h</button>
             <button class="chip-btn" data-crypto="traded">Most bought</button>
@@ -130,12 +132,12 @@
       <!-- POPULAR & STABLE -->
       <section class="card span-2 h-lg" id="cardPopular">
         <div class="card-head">
-          <h2>⭐ Popular &amp; Steady <span class="sub">big names, ranked by how calm they are</span></h2>
+          <h2>Popular &amp; Steady <span class="sub">big names, ranked by how calm they are</span></h2>
           <div class="head-actions">
             <select id="popSector" class="mini-select" title="Filter by sector"><option value="ALL">All sectors</option></select>
             <button class="chip-btn active" data-pop="ALL">All</button>
-            <button class="chip-btn" data-pop="IN">🇮🇳 India</button>
-            <button class="chip-btn" data-pop="US">🇺🇸 US</button>
+            <button class="chip-btn" data-pop="IN">India</button>
+            <button class="chip-btn" data-pop="US">US</button>
           </div>
         </div>
         <div class="pop-list" id="popList"></div>
@@ -145,7 +147,7 @@
       <!-- MUTUAL FUNDS -->
       <section class="card span-2 h-lg" id="cardFunds">
         <div class="card-head">
-          <h2>🏦 Mutual Funds <span class="sub">popular direct-growth schemes</span></h2>
+          <h2>Mutual Funds <span class="sub">popular direct-growth schemes</span></h2>
           <div class="head-actions">
             <select id="fundFilter" class="mini-select" title="Filter by category">
               <option value="ALL">All categories</option>
@@ -165,7 +167,7 @@
 
       <!-- MARKET CLOCKS -->
       <section class="card span-4 h-xs" id="cardSide">
-        <div class="card-head"><h2>🕒 Market Clocks <span class="sub">when each exchange trades</span></h2></div>
+        <div class="card-head"><h2>Market Clocks <span class="sub">click one for its full trading schedule</span></h2></div>
         <div class="sessions" id="sessions"></div>
       </section>
     </main>
@@ -188,6 +190,30 @@
       </label>
       <div class="suggest" id="suggest" hidden></div>
       <div class="picked" id="picked" hidden></div>
+
+      <div class="pick-actions" id="pickActions" hidden>
+        <button type="button" class="mini ghost" id="btnBuyChart">Show graph</button>
+        <span class="pick-hint">Full price history — ranges, axes and hover readout.</span>
+      </div>
+
+      <div class="buy-chart" id="buyChart" hidden>
+        <div class="bc-head">
+          <span class="bc-price" id="bcPrice">loading…</span>
+          <div class="seg tiny" id="bcRange">
+            <button type="button" data-r="1D" class="active">1D</button>
+            <button type="button" data-r="5D">5D</button>
+            <button type="button" data-r="1M">1M</button>
+            <button type="button" data-r="6M">6M</button>
+            <button type="button" data-r="1Y">1Y</button>
+            <button type="button" data-r="5Y">5Y</button>
+          </div>
+        </div>
+        <div class="chart-box small" id="bcBox">
+          <svg id="bcSvg" viewBox="0 0 700 260"></svg>
+          <div class="ch-tip" id="bcTip" hidden></div>
+        </div>
+      </div>
+
       <div class="pick-news" id="pickNews" hidden></div>
 
       <label>When did you buy it?</label>
@@ -208,6 +234,15 @@
         <label>Buy price <span class="auto-tag" id="priceTag">auto</span>
           <input id="fAvg" type="number" step="any" min="0" placeholder="fetched automatically" />
         </label>
+      </div>
+
+      <div class="pay-row" id="payRow" hidden>
+        <span class="pay-k">Money you are spending is in</span>
+        <div class="seg" id="payCur">
+          <button type="button" data-pay="INR">₹ INR</button>
+          <button type="button" data-pay="NATIVE" class="active">native</button>
+        </div>
+        <span class="pay-fx" id="payFx"></span>
       </div>
 
       <div class="invest-preview" id="investPreview"></div>
@@ -311,6 +346,26 @@
         <button class="mini solid" id="btnAddFromChart">+ Add to portfolio</button>
       </div>
       <p class="tip">Chart and calls are pattern reads on past prices — not a forecast, not financial advice.</p>
+    </div>
+  </div>
+
+  <!-- market session detail -->
+  <div class="modal-backdrop" id="modalSession" hidden>
+    <div class="modal">
+      <div class="chart-head">
+        <div>
+          <h3 id="seName">—</h3>
+          <div class="chart-sub" id="seWhere">—</div>
+        </div>
+        <button class="tb" id="btnCloseSession" title="Close">✕</button>
+      </div>
+
+      <div class="se-now" id="seNow"></div>
+      <div class="se-bar" id="seBar"></div>
+      <div class="se-grid" id="seGrid"></div>
+
+      <div class="modal-actions"><button class="mini solid" id="btnCloseSession2">Close</button></div>
+      <p class="tip">Regular trading hours only. Pre-market, after-hours and exchange holidays are not counted.</p>
     </div>
   </div>
 
