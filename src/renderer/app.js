@@ -13,6 +13,9 @@ const state = {
   pick: null,
   priceInfo: null,
   priceManual: false,
+  // Bumped per price lookup so a slow reply for an older date cannot land on a newer one.
+  buyPriceSeq: 0,
+  sellPriceSeq: 0,
   whenMode: 'now',
   qtyMode: 'qty',
   sugRows: [],
@@ -635,8 +638,15 @@ function render(patch) {
 
 /* ---------------- add-holding flow ---------------- */
 
+/**
+ * The visible date field wins over state.whenMode. The flag and the field can drift apart —
+ * reopening the dialog resets the flag to 'now' while the old date stays on screen — and when
+ * they disagreed the price was silently fetched for today and then labelled with today's date,
+ * so "27 Jul 2025" came back as "03 Aug 2026" at today's price.
+ */
 const buyTimestamp = () => {
-  if (state.whenMode === 'now') return Date.now();
+  const picking = state.whenMode === 'past' || !$('whenPickWrap').hidden;
+  if (!picking) return Date.now();
   const v = $('fWhen').value;
   const t = v ? new Date(v).getTime() : NaN;
   return isFinite(t) ? Math.min(t, Date.now()) : Date.now();
@@ -724,7 +734,12 @@ async function fetchBuyPrice() {
   if (state.priceManual) return updatePreview();
   setPriceTag('fetching…', 'loading');
   const ts = buyTimestamp();
-  const info = await window.pulse.priceAt(state.pick.symbol, ts);
+  // A datetime-local fires `change` once per edited segment, so several lookups are in flight at
+  // once. Without this token the slowest reply wins regardless of which date it was for, and a
+  // half-typed date's price lands on top of the one the user actually asked for.
+  const seq = ++state.buyPriceSeq;
+  const info = await window.pulse.priceAt(state.pick.symbol, ts).catch(() => null);
+  if (seq !== state.buyPriceSeq) return;
   if (!info || info.error || !isFinite(info.price)) {
     setPriceTag('type it in', 'manual');
     state.priceInfo = null;
@@ -879,11 +894,14 @@ async function updatePreview() {
     return;
   }
 
-  // When buy-price currency matches pay currency, display everything in that currency
+  // When buy-price currency matches pay currency, display everything in that currency. The field
+  // already holds the number in that currency, so it is used as-is — running it through the rate
+  // again converts a second time and turns ₹18,513 into ₹2.03.
   const sameChurrency = state.buyPriceCur === payCurrency();
   const cur = sameChurrency ? state.buyPriceCur : nativeCur();
   const sym = SYMBOLS[cur] || '';
-  const displayPrice = sameChurrency ? (price * (state.buyPriceRate || 1)) : price;
+  const typed = parseFloat($('fAvg').value);
+  const displayPrice = sameChurrency && isFinite(typed) ? typed : price;
   const invested = qty * displayPrice;
   const when = state.whenMode === 'now' ? 'right now' : state.priceInfo ? dateLabel(state.priceInfo.at) : 'that date';
   const pay = payCurrency();
@@ -903,9 +921,12 @@ async function updatePreview() {
   if (state.whenMode === 'past') {
     const live = await window.pulse.lookup(state.pick.symbol).catch(() => null);
     if (live && !live.error && isFinite(live.price)) {
-      const changePct = ((live.price - displayPrice) / displayPrice) * 100;
-      const gain = qty * (live.price - displayPrice);
-      line2 = `<br/>Now <b>${sym}${num(live.price)}</b> → <b class="${cls(gain)}">${gain >= 0 ? '+' : ''}${sym}${num(Math.abs(gain))}</b>
+      // lookup() answers in the share's own currency. displayPrice is in `cur`, so the live price
+      // has to be moved into `cur` too — comparing $356 against ₹34,020 is what produced "-99%".
+      const livePrice = sameChurrency ? live.price / (state.buyPriceRate || 1) : live.price;
+      const changePct = ((livePrice - displayPrice) / displayPrice) * 100;
+      const gain = qty * (livePrice - displayPrice);
+      line2 = `<br/>Now <b>${sym}${num(livePrice)}</b> → <b class="${cls(gain)}">${gain >= 0 ? '+' : ''}${sym}${num(Math.abs(gain))}</b>
         <span class="${cls(changePct)}">(${pctS(changePct, 1)})</span> since you bought`;
     }
   }
@@ -931,7 +952,8 @@ function setQtyMode(mode) {
 /* ---------------- sell flow ---------------- */
 
 const sellTimestamp = () => {
-  if (state.sellWhen === 'now') return Date.now();
+  const picking = state.sellWhen === 'past' || !$('sellWhenWrap').hidden;
+  if (!picking) return Date.now();
   const v = $('sWhen').value;
   const t = v ? new Date(v).getTime() : NaN;
   return isFinite(t) ? Math.min(t, Date.now()) : Date.now();
@@ -988,7 +1010,9 @@ async function fetchSellPrice() {
   if (!state.sell) return;
   if (state.sellPriceManual) return updateSellPreview();
   setSellPriceTag('fetching…', 'loading');
+  const seq = ++state.sellPriceSeq;
   const info = await window.pulse.priceAt(state.sell.symbol, sellTimestamp()).catch(() => null);
+  if (seq !== state.sellPriceSeq) return;
   if (!info || info.error || !isFinite(info.price)) {
     setSellPriceTag('type it in', 'manual');
     return updateSellPreview();
@@ -1103,6 +1127,9 @@ function openAdd(prefillSymbol) {
   state.whenMode = 'now';
   setQtyMode('qty');
   document.querySelectorAll('#whenToggle button').forEach((b) => b.classList.toggle('active', b.dataset.when === 'now'));
+  // A date left over from the previous holding must not survive the reset — it stays on screen
+  // while the mode flag says "now", and the two disagreeing is what mispriced the buy.
+  $('fWhen').value = '';
   $('whenPickWrap').hidden = true;
   updatePreview();
   if (prefillSymbol) {
@@ -1708,6 +1735,9 @@ function bind() {
     fetchBuyPrice();
   });
   $('fWhen').addEventListener('change', () => {
+    // Touching the date means the purchase was in the past, whatever the toggle currently says.
+    state.whenMode = 'past';
+    document.querySelectorAll('#whenToggle button').forEach((b) => b.classList.toggle('active', b.dataset.when === 'past'));
     state.priceManual = false;
     fetchBuyPrice();
   });
@@ -1802,6 +1832,8 @@ function bind() {
     if (e.target.dataset.mode) setSellMode(e.target.dataset.mode);
   });
   $('sWhen').addEventListener('change', () => {
+    state.sellWhen = 'past';
+    document.querySelectorAll('#sellWhenToggle button').forEach((b) => b.classList.toggle('active', b.dataset.when === 'past'));
     state.sellPriceManual = false;
     fetchSellPrice();
   });
