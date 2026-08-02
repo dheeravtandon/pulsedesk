@@ -18,7 +18,7 @@
   };
 
   const DEFAULT_PORTFOLIO = { baseCurrency: 'INR', cash: 0, holdings: [], trades: [] };
-  const DEFAULT_SETTINGS = { compact: false, hyperMarket: 'both', weather: { lat: null, lon: null }, alwaysOnTop: false, showOnAllDesktops: false, opacity: 1 };
+  const DEFAULT_SETTINGS = { compact: false, hyperMarket: 'both', alwaysOnTop: false, showOnAllDesktops: false, opacity: 1 };
 
   const read = (key, fallback) => {
     try {
@@ -250,18 +250,7 @@
     });
   }
 
-  async function refreshSlow() {
-    const s = read(LS.settings, DEFAULT_SETTINGS);
-    const has = (v) => v != null && v !== '' && isFinite(Number(v));
-    const qs = has(s.weather && s.weather.lat) && has(s.weather && s.weather.lon) ? `?lat=${s.weather.lat}&lon=${s.weather.lon}` : '';
-    const [w, cities] = await Promise.all([
-      guard('weather', () => api(`/api/weather${qs}`)),
-      guard('cities', () => api('/api/cities'))
-    ]);
-    emit({ weather: w || payload.weather || null, cities: cities || payload.cities || [], meta: meta() });
-  }
-
-  const refreshAll = () => Promise.all([refreshFast(), refreshMedium(), refreshSlow()]);
+  const refreshAll = () => Promise.all([refreshFast(), refreshMedium()]);
 
   /* --------------------------------- bridge -------------------------------- */
 
@@ -353,7 +342,6 @@
       get: async () => read(LS.settings, DEFAULT_SETTINGS),
       set: async (patch) => {
         const s = write(LS.settings, { ...read(LS.settings, DEFAULT_SETTINGS), ...patch });
-        if (patch.weather) refreshSlow();
         if (patch.hyperMarket) refreshMedium();
         return s;
       }
@@ -400,7 +388,6 @@
   refreshAll();
   setInterval(() => document.visibilityState === 'visible' && refreshFast(), 60 * 1000);
   setInterval(() => document.visibilityState === 'visible' && refreshMedium(), 5 * 60 * 1000);
-  setInterval(() => document.visibilityState === 'visible' && refreshSlow(), 30 * 60 * 1000);
   document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && refreshFast());
 
   if ('serviceWorker' in navigator) {

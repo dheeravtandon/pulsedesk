@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PulseDesk — Always-On Finance Cockpit</title>
+  <meta name="description" content="PulseDesk: Free, private, always-on-top desktop finance cockpit. Portfolio tracking, hype radar, news sentiment, crypto pumps, charting terminal with 14 indicators and strategy backtester." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ═══════════════════════════════════════════
+       DESIGN TOKENS
+    ═══════════════════════════════════════════ */
+    :root {
+      --bg-0: #05060f;
+      --bg-1: #0b0d1c;
+      --glass: rgba(18, 21, 42, 0.72);
+      --glass-2: rgba(28, 32, 60, 0.55);
+      --line: rgba(140, 160, 255, 0.14);
+      --txt: #e9edff;
+      --txt-dim: #8f9bc7;
+      --txt-mute: #5d6893;
+      --up: #17e29a;
+      --up-soft: rgba(23, 226, 154, 0.14);
+      --down: #ff4d6d;
+      --down-soft: rgba(255, 77, 109, 0.14);
+      --acc: #7c5cff;
+      --acc-2: #21d4fd;
+      --gold: #ffc44d;
+      --r: 16px;
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg-0);
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--txt);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ═══════════════════════════════════════════
+       GLOBAL SCROLL CONTAINER
+    ═══════════════════════════════════════════ */
+    .ad-container {
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ═══════════════════════════════════════════
+       SCENE SYSTEM — full-viewport panels
+    ═══════════════════════════════════════════ */
+    .scene {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      padding: 60px 24px;
+    }
+
+    /* grid overlay (subtle) */
+    .scene::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(124, 154, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(124, 154, 255, 0.03) 1px, transparent 1px);
+      background-size: 50px 50px;
+      mask-image: radial-gradient(80% 60% at 50% 40%, #000 20%, transparent 100%);
+    }
+
+    /* ambient glows */
+    .glow-tl {
+      position: absolute;
+      top: -20%; left: -10%;
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(124,92,255,0.25), transparent 70%);
+      pointer-events: none;
+      filter: blur(60px);
+    }
+    .glow-tr {
+      position: absolute;
+      top: -15%; right: -10%;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(33,212,253,0.18), transparent 70%);
+      pointer-events: none;
+      filter: blur(60px);
+    }
+    .glow-bc {
+      position: absolute;
+      bottom: -15%; left: 50%;
+      transform: translateX(-50%);
+      width: 800px; height: 500px;
+      background: radial-gradient(circle, rgba(23,226,154,0.12), transparent 70%);
+      pointer-events: none;
+      filter: blur(60px);
+    }
+
+    /* ═══════════════════════════════════════════
+       ANIMATION PRIMITIVES
+    ═══════════════════════════════════════════ */
+    .reveal {
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .reveal-scale {
+      opacity: 0;
+      transform: scale(0.85);
+      transition: opacity 0.9s cubic-bezier(0.16,1,0.3,1), transform 0.9s cubic-bezier(0.16,1,0.3,1);
+    }
+    .reveal-scale.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .reveal-left {
+      opacity: 0;
+      transform: translateX(-60px);
+      transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
+    }
+    .reveal-left.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .reveal-right {
+      opacity: 0;
+      transform: translateX(60px);
+      transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
+    }
+    .reveal-right.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* stagger support */
+    .d1 { transition-delay: 0.1s; }
+    .d2 { transition-delay: 0.2s; }
+    .d3 { transition-delay: 0.3s; }
+    .d4 { transition-delay: 0.4s; }
+    .d5 { transition-delay: 0.5s; }
+    .d6 { transition-delay: 0.6s; }
+    .d7 { transition-delay: 0.7s; }
+    .d8 { transition-delay: 0.8s; }
+
+    /* ═══════════════════════════════════════════
+       SCENE 1 — HERO INTRO
+    ═══════════════════════════════════════════ */
+    #scene-hero {
+      min-height: 100vh;
+      background:
+        radial-gradient(1200px 600px at 50% 30%, rgba(124,92,255,0.18), transparent 60%),
+        radial-gradient(800px 400px at 80% 0%, rgba(33,212,253,0.12), transparent 50%),
+        linear-gradient(170deg, #080a18 0%, var(--bg-0) 100%);
+    }
+
+    .hero-logo {
+      font-size: 72px;
+      background: linear-gradient(135deg, var(--acc-2), var(--acc) 50%, var(--up));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 40px rgba(124,92,255,0.5));
+      animation: float 4s ease-in-out infinite, spin-slow 12s linear infinite;
+      margin-bottom: 32px;
+    }
+    @keyframes spin-slow { to { transform: rotate(360deg); } }
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-12px); }
+    }
+
+    .hero-title {
+      font-size: clamp(36px, 6vw, 80px);
+      font-weight: 800;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      text-align: center;
+      line-height: 1.1;
+    }
+    .hero-title .pulse-word {
+      color: #cfd8ff;
+    }
+    .hero-title .desk-word {
+      background: linear-gradient(135deg, var(--acc), var(--acc-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hero-tagline {
+      font-size: clamp(16px, 2.2vw, 24px);
+      color: var(--txt-dim);
+      margin-top: 20px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      font-weight: 300;
+    }
+
+    .hero-pulse-line {
+      width: 200px;
+      height: 3px;
+      margin-top: 40px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent, var(--acc), var(--acc-2), var(--up), transparent);
+      animation: pulse-line 2s ease-in-out infinite;
+    }
+    @keyframes pulse-line {
+      0%, 100% { opacity: 0.4; transform: scaleX(0.6); }
+      50% { opacity: 1; transform: scaleX(1); }
+    }
+
+    .hero-badges {
+      display: flex;
+      gap: 16px;
+      margin-top: 40px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .hero-badge {
+      padding: 10px 22px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border: 1px solid var(--line);
+      background: var(--glass);
+      backdrop-filter: blur(20px);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hero-badge .dot-green { width: 8px; height: 8px; border-radius: 50%; background: var(--up); box-shadow: 0 0 10px var(--up); }
+    .hero-badge .dot-blue { width: 8px; height: 8px; border-radius: 50%; background: var(--acc-2); box-shadow: 0 0 10px var(--acc-2); }
+    .hero-badge .dot-gold { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+
+    /* ═══════════════════════════════════════════
+       SCENE 2 — THE PROBLEM
+    ═══════════════════════════════════════════ */
+    #scene-problem {
+      background: linear-gradient(180deg, var(--bg-0), #080a18);
+    }
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+      max-width: 900px;
+      width: 100%;
+      margin-top: 48px;
+    }
+    .problem-card {
+      background: var(--glass);
+      border: 1px solid rgba(255,77,109,0.15);
+      border-radius: var(--r);
+      padding: 28px;
+      backdrop-filter: blur(16px);
+      position: relative;
+      overflow: hidden;
+    }
+    .problem-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--down), transparent);
+    }
+    .problem-icon {
+      font-size: 32px;
+      margin-bottom: 16px;
+    }
+    .problem-card h3 {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--down);
+    }
+    .problem-card p {
+      font-size: 14px;
+      color: var(--txt-dim);
+      line-height: 1.6;
+    }
+    .section-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      color: var(--txt-mute);
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(28px, 4vw, 48px);
+      font-weight: 800;
+      text-align: center;
+      line-height: 1.2;
+    }
+    .section-title .gradient-text {
+      background: linear-gradient(135deg, var(--acc), var(--acc-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    /* ═══════════════════════════════════════════
+       SCENE 3 — THE REVEAL (mock dashboard)
+    ═══════════════════════════════════════════ */
+    #scene-reveal {
+      background:
+        radial-gradient(900px 500px at 50% 50%, rgba(124,92,255,0.12), transparent 60%),
+        linear-gradient(180deg, #080a18, var(--bg-0));
+    }
+    .dashboard-mock {
+      width: min(1100px, 92vw);
+      aspect-ratio: 16/9;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: var(--glass);
+      backdrop-filter: blur(24px);
+      box-shadow:
+        0 40px 100px rgba(0,0,0,0.6),
+        0 0 0 1px rgba(150,170,255,0.08),
+        0 0 80px rgba(124,92,255,0.15);
+      margin-top: 48px;
+      overflow: hidden;
+      position: relative;
+    }
+    .mock-titlebar {
+      height: 42px;
+      background: linear-gradient(180deg, rgba(16,19,40,0.95), rgba(10,12,28,0.7));
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 10px;
+    }
+    .mock-logo {
+      font-size: 14px;
+      background: linear-gradient(135deg, var(--acc-2), var(--acc), var(--up));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .mock-brand {
+      font-size: 11px;
+      letter-spacing: 3px;
+      font-weight: 600;
+      color: #cfd8ff;
+    }
+    .mock-dots {
+      margin-left: auto;
+      display: flex;
+      gap: 6px;
+    }
+    .mock-dots span {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+    }
+    .mock-dots .md-r { background: var(--down); border-color: var(--down); }
+    .mock-dots .md-y { background: var(--gold); border-color: var(--gold); }
+    .mock-dots .md-g { background: var(--up); border-color: var(--up); }
+
+    /* tape */
+    .mock-tape {
+      height: 28px;
+      background: rgba(0,0,0,0.3);
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 24px;
+      overflow: hidden;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .tape-item {
+      display: flex;
+      gap: 6px;
+      white-space: nowrap;
+      animation: tape-scroll 20s linear infinite;
+    }
+    @keyframes tape-scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    .tape-sym { color: var(--txt-dim); font-weight: 600; }
+    .tape-up { color: var(--up); }
+    .tape-down { color: var(--down); }
+
+    /* dashboard body */
+    .mock-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      padding: 12px;
+      height: calc(100% - 70px);
+    }
+    .mock-card {
+      background: rgba(12, 15, 32, 0.7);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+    }
+    .mc-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--txt-mute);
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .mc-value {
+      font-size: clamp(18px, 2.5vw, 28px);
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .mc-change {
+      font-size: 12px;
+      margin-top: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .mc-up { color: var(--up); }
+    .mc-down { color: var(--down); }
+
+    /* mini hype bars */
+    .hype-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .hype-label { font-size: 10px; color: var(--txt-dim); width: 50px; font-family: 'JetBrains Mono', monospace; }
+    .hype-track {
+      flex: 1;
+      height: 6px;
+      background: rgba(124,92,255,0.12);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .hype-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--acc), var(--acc-2));
+      transform-origin: left;
+      transform: scaleX(0);
+      transition: transform 1.2s cubic-bezier(0.16,1,0.3,1);
+    }
+    .hype-fill.animate { transform: scaleX(1); }
+    .hype-score { font-size: 10px; color: var(--acc-2); font-family: 'JetBrains Mono', monospace; width: 24px; text-align: right; }
+
+    /* mini chart (SVG) */
+    .mini-chart-svg {
+      width: 100%;
+      flex: 1;
+      min-height: 60px;
+    }
+    .mini-chart-svg .chart-line {
+      fill: none;
+      stroke: var(--acc-2);
+      stroke-width: 2;
+      stroke-dasharray: 500;
+      stroke-dashoffset: 500;
+      transition: stroke-dashoffset 2s ease;
+    }
+    .mini-chart-svg .chart-line.animate {
+      stroke-dashoffset: 0;
+    }
+    .mini-chart-svg .chart-area {
+      fill: url(#chartGrad);
+      opacity: 0;
+      transition: opacity 1s ease 0.8s;
+    }
+    .mini-chart-svg .chart-area.animate {
+      opacity: 0.3;
+    }
+
+    /* news items */
+    .news-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 10px;
+      opacity: 0;
+      transform: translateX(20px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .news-item.animate {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .news-tag {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 8px;
+      letter-spacing: 1px;
+      flex-shrink: 0;
+    }
+    .tag-rise { background: var(--up-soft); color: var(--up); }
+    .tag-fall { background: var(--down-soft); color: var(--down); }
+    .news-text { color: var(--txt-dim); line-height: 1.3; }
+
+    /* ═══════════════════════════════════════════
+       SCENE 4 — FEATURE CARDS
+    ═══════════════════════════════════════════ */
+    #scene-features {
+      background: linear-gradient(180deg, var(--bg-0), #080a18, var(--bg-0));
+      padding: 80px 24px;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      max-width: 1100px;
+      width: 100%;
+      margin-top: 56px;
+    }
+    .feature-card {
+      background: var(--glass);
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(16px);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 60px rgba(124,92,255,0.15);
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: var(--r) var(--r) 0 0;
+    }
+    .fc-purple::before { background: linear-gradient(90deg, var(--acc), var(--acc-2)); }
+    .fc-green::before { background: linear-gradient(90deg, var(--up), var(--acc-2)); }
+    .fc-gold::before { background: linear-gradient(90deg, var(--gold), var(--acc)); }
+    .fc-cyan::before { background: linear-gradient(90deg, var(--acc-2), var(--up)); }
+    .fc-red::before { background: linear-gradient(90deg, var(--down), var(--gold)); }
+    .fc-blue::before { background: linear-gradient(90deg, #4d7cff, var(--acc-2)); }
+
+    .feature-icon {
+      font-size: 36px;
+      margin-bottom: 16px;
+      display: block;
+    }
+    .feature-card h3 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .feature-card p {
+      font-size: 14px;
+      color: var(--txt-dim);
+      line-height: 1.7;
+    }
+    .feature-stat {
+      margin-top: 16px;
+      padding: 10px 16px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .fs-num {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--acc), var(--acc-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    /* ═══════════════════════════════════════════
+       SCENE 5 — INDICATORS SHOWCASE
+    ═══════════════════════════════════════════ */
+    #scene-indicators {
+      background:
+        radial-gradient(600px 400px at 30% 50%, rgba(33,212,253,0.08), transparent 50%),
+        linear-gradient(180deg, var(--bg-0), #080a18);
+    }
+    .indicator-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      max-width: 800px;
+      margin-top: 48px;
+    }
+    .indicator-pill {
+      padding: 12px 24px;
+      border-radius: 100px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid var(--line);
+      background: var(--glass);
+      backdrop-filter: blur(16px);
+      cursor: default;
+      transition: all 0.3s ease;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .indicator-pill:hover {
+      border-color: var(--acc);
+      box-shadow: 0 0 20px rgba(124,92,255,0.2);
+      transform: translateY(-2px);
+    }
+
+    /* candlestick SVG */
+    .candle-chart {
+      width: min(900px, 90vw);
+      height: 300px;
+      margin-top: 48px;
+      position: relative;
+    }
+    .candle-chart svg {
+      width: 100%;
+      height: 100%;
+    }
+    .candle {
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .candle.animate {
+      opacity: 1;
+    }
+
+    /* ═══════════════════════════════════════════
+       SCENE 6 — DIFFERENTIATORS
+    ═══════════════════════════════════════════ */
+    #scene-diff {
+      background:
+        radial-gradient(800px 500px at 50% 40%, rgba(23,226,154,0.08), transparent 50%),
+        linear-gradient(180deg, #080a18, var(--bg-0));
+    }
+    .diff-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      max-width: 1000px;
+      width: 100%;
+      margin-top: 56px;
+    }
+    .diff-card {
+      background: var(--glass);
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      padding: 32px 24px;
+      text-align: center;
+      backdrop-filter: blur(16px);
+      transition: all 0.3s ease;
+    }
+    .diff-card:hover {
+      border-color: var(--up);
+      box-shadow: 0 0 30px rgba(23,226,154,0.1);
+    }
+    .diff-icon {
+      font-size: 40px;
+      margin-bottom: 16px;
+      display: block;
+    }
+    .diff-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .diff-card p {
+      font-size: 12px;
+      color: var(--txt-dim);
+    }
+
+    /* ═══════════════════════════════════════════
+       SCENE 7 — PLATFORMS
+    ═══════════════════════════════════════════ */
+    #scene-platforms {
+      background: linear-gradient(180deg, var(--bg-0), #080a18);
+    }
+    .platform-row {
+      display: flex;
+      gap: 32px;
+      margin-top: 48px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .platform-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .platform-icon-box {
+      width: 80px; height: 80px;
+      border-radius: 20px;
+      background: var(--glass);
+      border: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      backdrop-filter: blur(16px);
+      transition: all 0.3s ease;
+    }
+    .platform-icon-box:hover {
+      border-color: var(--acc-2);
+      box-shadow: 0 0 30px rgba(33,212,253,0.15);
+      transform: translateY(-4px);
+    }
+    .platform-name {
+      font-size: 13px;
+      color: var(--txt-dim);
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    /* ═══════════════════════════════════════════
+       SCENE 8 — CTA / CLOSING
+    ═══════════════════════════════════════════ */
+    #scene-cta {
+      min-height: 100vh;
+      background:
+        radial-gradient(1000px 600px at 50% 40%, rgba(124,92,255,0.18), transparent 55%),
+        radial-gradient(600px 400px at 70% 60%, rgba(33,212,253,0.10), transparent 50%),
+        linear-gradient(170deg, #080a18, var(--bg-0), #080a18);
+    }
+
+    .cta-logo {
+      font-size: 96px;
+      background: linear-gradient(135deg, var(--acc-2), var(--acc) 50%, var(--up));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 60px rgba(124,92,255,0.4));
+      animation: pulse-glow 3s ease-in-out infinite;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { filter: drop-shadow(0 0 40px rgba(124,92,255,0.3)); }
+      50% { filter: drop-shadow(0 0 80px rgba(124,92,255,0.6)) drop-shadow(0 0 120px rgba(33,212,253,0.3)); }
+    }
+
+    .cta-title {
+      font-size: clamp(32px, 5vw, 64px);
+      font-weight: 800;
+      letter-spacing: 10px;
+      text-transform: uppercase;
+      margin-top: 24px;
+      text-align: center;
+    }
+    .cta-subtitle {
+      font-size: clamp(14px, 2vw, 20px);
+      color: var(--txt-dim);
+      margin-top: 16px;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      font-weight: 300;
+      text-align: center;
+    }
+
+    .cta-btn {
+      margin-top: 48px;
+      padding: 18px 48px;
+      border-radius: 100px;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--acc), var(--acc-2));
+      color: #fff;
+      box-shadow: 0 8px 30px rgba(124,92,255,0.4);
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .cta-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 40px rgba(124,92,255,0.5);
+    }
+
+    .cta-url {
+      margin-top: 24px;
+      font-size: 14px;
+      color: var(--txt-mute);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 1px;
+    }
+    .cta-url a {
+      color: var(--acc-2);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .cta-url a:hover { color: var(--up); }
+
+    .cta-credit {
+      margin-top: 48px;
+      font-size: 12px;
+      color: var(--txt-mute);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    /* scrolling ticker tape */
+    .ticker-tape-container {
+      width: 100%;
+      overflow: hidden;
+      margin-top: 80px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      padding: 12px 0;
+    }
+    .ticker-tape-track {
+      display: flex;
+      gap: 40px;
+      animation: ticker-scroll 30s linear infinite;
+      width: max-content;
+    }
+    @keyframes ticker-scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    .ticker-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .ticker-sym { color: var(--txt-dim); font-weight: 600; }
+
+    /* counter animation */
+    .counter { font-family: 'JetBrains Mono', monospace; }
+
+    /* responsive */
+    @media (max-width: 768px) {
+      .mock-body { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr; }
+      .diff-grid { grid-template-columns: repeat(2, 1fr); }
+      .platform-row { gap: 20px; }
+    }
+
+    /* separator */
+    .scene-sep {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--line), transparent);
+    }
+  </style>
+</head>
+<body>
+  <div class="ad-container">
+
+    <!-- ═══════════ SCROLLING TICKER TOP ═══════════ -->
+    <div class="ticker-tape-container">
+      <div class="ticker-tape-track">
+        <span class="ticker-item"><span class="ticker-sym">S&P 500</span> <span class="mc-up">5,847.32 ▲ 1.2%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">NASDAQ</span> <span class="mc-up">19,432.11 ▲ 1.8%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">NIFTY 50</span> <span class="mc-up">24,834.85 ▲ 0.7%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">BTC</span> <span class="mc-up">$98,230 ▲ 3.1%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">ETH</span> <span class="mc-down">$3,412 ▼ 0.4%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">SENSEX</span> <span class="mc-up">81,120.44 ▲ 0.5%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">TSLA</span> <span class="mc-up">$312.40 ▲ 4.2%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">NVDA</span> <span class="mc-up">$142.88 ▲ 2.6%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">RELIANCE</span> <span class="mc-down">₹2,941 ▼ 0.3%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">GOLD</span> <span class="mc-up" style="color: var(--gold);">$2,680 ▲ 0.8%</span></span>
+        <!-- duplicate for seamless loop -->
+        <span class="ticker-item"><span class="ticker-sym">S&P 500</span> <span class="mc-up">5,847.32 ▲ 1.2%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">NASDAQ</span> <span class="mc-up">19,432.11 ▲ 1.8%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">NIFTY 50</span> <span class="mc-up">24,834.85 ▲ 0.7%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">BTC</span> <span class="mc-up">$98,230 ▲ 3.1%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">ETH</span> <span class="mc-down">$3,412 ▼ 0.4%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">SENSEX</span> <span class="mc-up">81,120.44 ▲ 0.5%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">TSLA</span> <span class="mc-up">$312.40 ▲ 4.2%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">NVDA</span> <span class="mc-up">$142.88 ▲ 2.6%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">RELIANCE</span> <span class="mc-down">₹2,941 ▼ 0.3%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">GOLD</span> <span class="mc-up" style="color: var(--gold);">$2,680 ▲ 0.8%</span></span>
+      </div>
+    </div>
+
+    <!-- ═══════════ SCENE 1: HERO ═══════════ -->
+    <section class="scene" id="scene-hero">
+      <div class="glow-tl"></div>
+      <div class="glow-tr"></div>
+      <div class="hero-logo reveal">◈</div>
+      <h1 class="hero-title reveal d1">
+        <span class="pulse-word">PULSE</span><span class="desk-word">DESK</span>
+      </h1>
+      <p class="hero-tagline reveal d2">Your Always-On Finance Cockpit</p>
+      <div class="hero-pulse-line reveal d3"></div>
+      <div class="hero-badges reveal d4">
+        <span class="hero-badge"><span class="dot-green"></span> Free Forever</span>
+        <span class="hero-badge"><span class="dot-blue"></span> No Login Required</span>
+        <span class="hero-badge"><span class="dot-gold"></span> 100% Private</span>
+      </div>
+    </section>
+
+    <!-- ═══════════ SCENE 2: THE PROBLEM ═══════════ -->
+    <section class="scene" id="scene-problem">
+      <div class="glow-tl"></div>
+      <p class="section-label reveal">The Problem</p>
+      <h2 class="section-title reveal d1">
+        Trading shouldn't look like <span class="gradient-text">this.</span>
+      </h2>
+      <div class="problem-grid">
+        <div class="problem-card reveal d2">
+          <span class="problem-icon">🗂️</span>
+          <h3>Tab Overload</h3>
+          <p>Broker app, two news sites, a crypto exchange, a charting tool — all open, all fighting for your attention.</p>
+        </div>
+        <div class="problem-card reveal d3">
+          <span class="problem-icon">💳</span>
+          <h3>Paid Subscriptions</h3>
+          <p>Want to draw an RSI on your chart? That'll be $19.99/month. Want Bollinger Bands too? Upgrade to Pro.</p>
+        </div>
+        <div class="problem-card reveal d4">
+          <span class="problem-icon">🔓</span>
+          <h3>Your Data, Their Servers</h3>
+          <p>Every portfolio tracker wants your login, your holdings, your strategy — stored on their cloud, for their benefit.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ SCENE 3: THE REVEAL ═══════════ -->
+    <section class="scene" id="scene-reveal">
+      <p class="section-label reveal">The Solution</p>
+      <h2 class="section-title reveal d1">
+        One surface. <span class="gradient-text">Everything that matters.</span>
+      </h2>
+      <div class="dashboard-mock reveal-scale d2">
+        <!-- mock titlebar -->
+        <div class="mock-titlebar">
+          <span class="mock-logo">◈</span>
+          <span class="mock-brand">PULSEDESK</span>
+          <div class="mock-dots">
+            <span class="md-g"></span>
+            <span class="md-y"></span>
+            <span class="md-r"></span>
+          </div>
+        </div>
+        <!-- mock tape -->
+        <div class="mock-tape">
+          <div class="tape-item">
+            <span class="tape-sym">S&P</span><span class="tape-up">+1.2%</span>
+            <span class="tape-sym">NDAQ</span><span class="tape-up">+1.8%</span>
+            <span class="tape-sym">NIFTY</span><span class="tape-up">+0.7%</span>
+            <span class="tape-sym">BTC</span><span class="tape-up">+3.1%</span>
+            <span class="tape-sym">ETH</span><span class="tape-down">-0.4%</span>
+            <span class="tape-sym">VIX</span><span class="tape-down">14.2</span>
+            <span class="tape-sym">GOLD</span><span class="tape-up">+0.8%</span>
+            <span class="tape-sym">S&P</span><span class="tape-up">+1.2%</span>
+            <span class="tape-sym">NDAQ</span><span class="tape-up">+1.8%</span>
+            <span class="tape-sym">NIFTY</span><span class="tape-up">+0.7%</span>
+          </div>
+        </div>
+        <!-- mock body -->
+        <div class="mock-body">
+          <!-- Portfolio card -->
+          <div class="mock-card">
+            <span class="mc-label">Portfolio · Net Worth</span>
+            <span class="mc-value mc-up" data-count="847320">$0</span>
+            <span class="mc-change mc-up">▲ $12,440 today (+1.49%)</span>
+            <svg class="mini-chart-svg" viewBox="0 0 200 70" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--acc-2)" stop-opacity="0.3" />
+                  <stop offset="100%" stop-color="var(--acc-2)" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+              <path class="chart-area" d="M0,60 L10,55 L25,50 L40,52 L55,42 L70,38 L85,40 L100,30 L115,28 L130,25 L145,22 L160,18 L175,15 L190,12 L200,10 L200,70 L0,70 Z" />
+              <path class="chart-line" d="M0,60 L10,55 L25,50 L40,52 L55,42 L70,38 L85,40 L100,30 L115,28 L130,25 L145,22 L160,18 L175,15 L190,12 L200,10" />
+            </svg>
+          </div>
+
+          <!-- Hype Radar card -->
+          <div class="mock-card">
+            <span class="mc-label">Hype Radar · Top 5</span>
+            <div class="hype-bar-row"><span class="hype-label">NVDA</span><div class="hype-track"><div class="hype-fill" style="width:92%"></div></div><span class="hype-score">92</span></div>
+            <div class="hype-bar-row"><span class="hype-label">TSLA</span><div class="hype-track"><div class="hype-fill" style="width:85%"></div></div><span class="hype-score">85</span></div>
+            <div class="hype-bar-row"><span class="hype-label">AAPL</span><div class="hype-track"><div class="hype-fill" style="width:78%"></div></div><span class="hype-score">78</span></div>
+            <div class="hype-bar-row"><span class="hype-label">AMD</span><div class="hype-track"><div class="hype-fill" style="width:71%"></div></div><span class="hype-score">71</span></div>
+            <div class="hype-bar-row"><span class="hype-label">MSFT</span><div class="hype-track"><div class="hype-fill" style="width:65%"></div></div><span class="hype-score">65</span></div>
+          </div>
+
+          <!-- News Sentiment card -->
+          <div class="mock-card">
+            <span class="mc-label">News Sentiment · Top Headlines</span>
+            <div class="news-item" style="transition-delay: 0.1s"><span class="news-tag tag-rise">RISE ↑ 87%</span><span class="news-text">NVIDIA hits record high on AI demand surge</span></div>
+            <div class="news-item" style="transition-delay: 0.3s"><span class="news-tag tag-fall">FALL ↓ 72%</span><span class="news-text">Fed signals cautious approach to rate cuts</span></div>
+            <div class="news-item" style="transition-delay: 0.5s"><span class="news-tag tag-rise">RISE ↑ 81%</span><span class="news-text">Bitcoin ETF inflows hit $800M in single day</span></div>
+            <div class="news-item" style="transition-delay: 0.7s"><span class="news-tag tag-rise">RISE ↑ 65%</span><span class="news-text">Tesla delivery numbers beat Street estimates</span></div>
+            <div class="news-item" style="transition-delay: 0.9s"><span class="news-tag tag-fall">FALL ↓ 58%</span><span class="news-text">China trade data disappoints, Hang Seng slides</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ SCENE 4: FEATURES ═══════════ -->
+    <section class="scene" id="scene-features">
+      <div class="glow-tl"></div>
+      <div class="glow-bc"></div>
+      <p class="section-label reveal">Features</p>
+      <h2 class="section-title reveal d1">
+        Everything you need. <span class="gradient-text">Nothing you don't.</span>
+      </h2>
+      <div class="features-grid">
+        <div class="feature-card fc-purple reveal d2">
+          <span class="feature-icon">📊</span>
+          <h3>Multi-Asset Portfolio</h3>
+          <p>Track Stocks, Crypto, Mutual Funds, ETFs, Indices & Commodities. Real-time P&L with allocation donut and net-worth sparkline.</p>
+          <div class="feature-stat"><span class="fs-num">6</span> asset classes in one view</div>
+        </div>
+        <div class="feature-card fc-green reveal d3">
+          <span class="feature-icon">🔥</span>
+          <h3>Hype Radar (0–100)</h3>
+          <p>Proprietary attention score blending volume surge, price move & news mentions. Spot what's moving before it moves.</p>
+          <div class="feature-stat"><span class="fs-num">100</span> hype score scale</div>
+        </div>
+        <div class="feature-card fc-gold reveal d4">
+          <span class="feature-icon">📰</span>
+          <h3>News Sentiment Engine</h3>
+          <p>15 headlines from 8 sources. Every one tagged RISE ↑, FALL ↓, or FLAT with a confidence percentage.</p>
+          <div class="feature-stat"><span class="fs-num">8</span> news sources fused</div>
+        </div>
+        <div class="feature-card fc-cyan reveal d5">
+          <span class="feature-icon">🚀</span>
+          <h3>Crypto Pump Table</h3>
+          <p>Top 10 hardest-pumping crypto pairs over the last 5 hours. Fear & Greed index alongside. No noise — only real volume.</p>
+          <div class="feature-stat"><span class="fs-num">5h</span> rolling momentum window</div>
+        </div>
+        <div class="feature-card fc-red reveal d6">
+          <span class="feature-icon">📈</span>
+          <h3>Charting Terminal</h3>
+          <p>Full candlestick charts: Candles, Heikin-Ashi, OHLC, Line, Area. 14 indicators including VWAP, RSI, MACD, Bollinger, Volume Profile.</p>
+          <div class="feature-stat"><span class="fs-num">14</span> technical indicators</div>
+        </div>
+        <div class="feature-card fc-blue reveal d7">
+          <span class="feature-icon">⚗️</span>
+          <h3>Strategy Backtester</h3>
+          <p>Simulate any rule bar by bar. Fills at next bar's open with brokerage & slippage. Parameter sweep to detect curve-fitting.</p>
+          <div class="feature-stat"><span class="fs-num">0</span> cost per backtest</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ SCENE 5: INDICATORS STRIP ═══════════ -->
+    <section class="scene" id="scene-indicators">
+      <div class="glow-tr"></div>
+      <p class="section-label reveal">Charting Power</p>
+      <h2 class="section-title reveal d1">
+        14 indicators. <span class="gradient-text">Zero subscriptions.</span>
+      </h2>
+      <div class="indicator-pills">
+        <span class="indicator-pill reveal d1">SMA</span>
+        <span class="indicator-pill reveal d2">EMA</span>
+        <span class="indicator-pill reveal d2">WMA</span>
+        <span class="indicator-pill reveal d3">RSI</span>
+        <span class="indicator-pill reveal d3">MACD</span>
+        <span class="indicator-pill reveal d4">Stochastic</span>
+        <span class="indicator-pill reveal d4">Bollinger</span>
+        <span class="indicator-pill reveal d5">ATR</span>
+        <span class="indicator-pill reveal d5">Donchian</span>
+        <span class="indicator-pill reveal d6">ADX / DMI</span>
+        <span class="indicator-pill reveal d6">VWAP</span>
+        <span class="indicator-pill reveal d7">OBV</span>
+        <span class="indicator-pill reveal d7">Vol Profile</span>
+        <span class="indicator-pill reveal d8">Backtest</span>
+      </div>
+
+      <!-- animated candlestick chart -->
+      <div class="candle-chart reveal-scale d3">
+        <svg viewBox="0 0 700 250" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="bollGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--acc)" stop-opacity="0.08" />
+              <stop offset="100%" stop-color="var(--acc)" stop-opacity="0.02" />
+            </linearGradient>
+          </defs>
+          <!-- bollinger band area -->
+          <path d="M20,60 Q100,30 200,50 T400,40 T600,55 T700,45 L700,200 Q600,210 400,195 T200,205 T20,190 Z" fill="url(#bollGrad)" class="candle animate" style="transition-delay: 0.3s" />
+          <!-- candlesticks -->
+          <g id="candles"></g>
+          <!-- SMA overlay -->
+          <path d="M20,130 Q80,115 140,120 T260,110 T380,100 T500,95 T620,85 T700,80" fill="none" stroke="var(--gold)" stroke-width="1.5" opacity="0.6" stroke-dasharray="500" stroke-dashoffset="500" class="candle" style="transition-delay: 1.5s" />
+          <!-- RSI area (below) -->
+          <rect x="0" y="220" width="700" height="1" fill="var(--line)" />
+          <path d="M20,240 Q80,235 140,238 T260,232 T380,245 T500,228 T620,240 T700,235" fill="none" stroke="var(--acc-2)" stroke-width="1.2" opacity="0.5" stroke-dasharray="500" stroke-dashoffset="500" class="candle" style="transition-delay: 2s" />
+        </svg>
+      </div>
+    </section>
+
+    <!-- ═══════════ SCENE 6: DIFFERENTIATORS ═══════════ -->
+    <section class="scene" id="scene-diff">
+      <p class="section-label reveal">Why PulseDesk</p>
+      <h2 class="section-title reveal d1">
+        Built different. <span class="gradient-text">By design.</span>
+      </h2>
+      <div class="diff-grid">
+        <div class="diff-card reveal d2">
+          <span class="diff-icon">💎</span>
+          <h3>Free Forever</h3>
+          <p>No subscription, no trial, no upsell. Every feature, always free.</p>
+        </div>
+        <div class="diff-card reveal d3">
+          <span class="diff-icon">🚫</span>
+          <h3>No Login</h3>
+          <p>No account. No email. No password. Just open and use.</p>
+        </div>
+        <div class="diff-card reveal d4">
+          <span class="diff-icon">🔒</span>
+          <h3>100% Private</h3>
+          <p>Your data never leaves your device. No cloud, no tracking, no telemetry.</p>
+        </div>
+        <div class="diff-card reveal d5">
+          <span class="diff-icon">📌</span>
+          <h3>Always On Top</h3>
+          <p>Frameless, transparent widget pinned above everything. Adjustable opacity.</p>
+        </div>
+        <div class="diff-card reveal d6">
+          <span class="diff-icon">⚡</span>
+          <h3>Zero Latency</h3>
+          <p>Vanilla JS, no framework bloat. Instant start, tiny memory footprint.</p>
+        </div>
+        <div class="diff-card reveal d7">
+          <span class="diff-icon">🌍</span>
+          <h3>Multi-Currency</h3>
+          <p>INR, USD, EUR, GBP, AED, JPY. Live FX conversion across your portfolio.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ SCENE 7: PLATFORMS ═══════════ -->
+    <section class="scene" id="scene-platforms">
+      <p class="section-label reveal">Everywhere</p>
+      <h2 class="section-title reveal d1">
+        Desktop. Phone. Browser. <span class="gradient-text">One codebase.</span>
+      </h2>
+      <div class="platform-row">
+        <div class="platform-item reveal d2">
+          <div class="platform-icon-box">🖥️</div>
+          <span class="platform-name">Windows</span>
+        </div>
+        <div class="platform-item reveal d3">
+          <div class="platform-icon-box">📱</div>
+          <span class="platform-name">Android</span>
+        </div>
+        <div class="platform-item reveal d4">
+          <div class="platform-icon-box">🍎</div>
+          <span class="platform-name">iPhone</span>
+        </div>
+        <div class="platform-item reveal d5">
+          <div class="platform-icon-box">🌐</div>
+          <span class="platform-name">Browser PWA</span>
+        </div>
+      </div>
+      <p class="reveal d6" style="margin-top: 32px; color: var(--txt-mute); font-size: 14px; text-align: center; max-width: 500px;">
+        Install directly from the browser — no app store, no fees. Your holdings stay in your browser's local storage. Nothing is ever uploaded.
+      </p>
+    </section>
+
+    <!-- ═══════════ SCENE 8: CTA ═══════════ -->
+    <section class="scene" id="scene-cta">
+      <div class="glow-tl"></div>
+      <div class="glow-tr"></div>
+      <div class="glow-bc"></div>
+      <div class="cta-logo reveal">◈</div>
+      <h2 class="cta-title reveal d1">
+        <span class="pulse-word">PULSE</span><span class="desk-word">DESK</span>
+      </h2>
+      <p class="cta-subtitle reveal d2">Always On. Always Free. Always Yours.</p>
+      <a href="https://dheeravtandon.github.io/pulsedesk/" class="cta-btn reveal d3" target="_blank" rel="noopener">
+        Launch PulseDesk →
+      </a>
+      <p class="cta-url reveal d4">
+        <a href="https://dheeravtandon.github.io/pulsedesk/" target="_blank" rel="noopener">dheeravtandon.github.io/pulsedesk</a>
+      </p>
+      <p class="cta-credit reveal d5">Created by Dheerav Tandon</p>
+    </section>
+
+    <!-- bottom ticker -->
+    <div class="ticker-tape-container">
+      <div class="ticker-tape-track">
+        <span class="ticker-item"><span class="ticker-sym">PORTFOLIO</span> <span class="mc-up">+$12,440 ▲ 1.49%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">HYPE</span> <span style="color: var(--acc-2);">NVDA 92 · TSLA 85 · AAPL 78</span></span>
+        <span class="ticker-item"><span class="ticker-sym">SENTIMENT</span> <span class="mc-up">BULLISH 68%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">CRYPTO</span> <span class="mc-up">BTC $98,230 ▲ 3.1%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">FEAR&GREED</span> <span style="color: var(--gold);">72 — Greed</span></span>
+        <span class="ticker-item"><span class="ticker-sym">MARKET PULSE</span> <span class="mc-up">+62 Bullish</span></span>
+        <!-- duplicate -->
+        <span class="ticker-item"><span class="ticker-sym">PORTFOLIO</span> <span class="mc-up">+$12,440 ▲ 1.49%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">HYPE</span> <span style="color: var(--acc-2);">NVDA 92 · TSLA 85 · AAPL 78</span></span>
+        <span class="ticker-item"><span class="ticker-sym">SENTIMENT</span> <span class="mc-up">BULLISH 68%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">CRYPTO</span> <span class="mc-up">BTC $98,230 ▲ 3.1%</span></span>
+        <span class="ticker-item"><span class="ticker-sym">FEAR&GREED</span> <span style="color: var(--gold);">72 — Greed</span></span>
+        <span class="ticker-item"><span class="ticker-sym">MARKET PULSE</span> <span class="mc-up">+62 Bullish</span></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ═══════════════════════════════════════════
+       INTERSECTION OBSERVER — scroll-triggered reveals
+    ═══════════════════════════════════════════ */
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+
+          // trigger child animations
+          if (entry.target.closest('#scene-reveal')) {
+            triggerDashboardAnimations();
+          }
+          if (entry.target.closest('#scene-indicators')) {
+            triggerCandleAnimations();
+          }
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -50px 0px' });
+
+    document.querySelectorAll('.reveal, .reveal-scale, .reveal-left, .reveal-right').forEach(el => {
+      observer.observe(el);
+    });
+
+    /* ═══════════════════════════════════════════
+       DASHBOARD ANIMATIONS
+    ═══════════════════════════════════════════ */
+    let dashboardAnimated = false;
+    function triggerDashboardAnimations() {
+      if (dashboardAnimated) return;
+      dashboardAnimated = true;
+
+      // hype bars
+      setTimeout(() => {
+        document.querySelectorAll('.hype-fill').forEach(bar => {
+          bar.classList.add('animate');
+        });
+      }, 600);
+
+      // chart line
+      setTimeout(() => {
+        document.querySelectorAll('.chart-line').forEach(l => l.classList.add('animate'));
+        document.querySelectorAll('.chart-area').forEach(a => a.classList.add('animate'));
+      }, 800);
+
+      // news items
+      setTimeout(() => {
+        document.querySelectorAll('.news-item').forEach(n => n.classList.add('animate'));
+      }, 1000);
+
+      // counter animation
+      setTimeout(() => {
+        animateCounter(document.querySelector('[data-count]'));
+      }, 400);
+    }
+
+    function animateCounter(el) {
+      if (!el) return;
+      const target = parseInt(el.dataset.count);
+      const duration = 2000;
+      const start = performance.now();
+
+      function tick(now) {
+        const elapsed = now - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.floor(target * eased);
+        el.textContent = '$' + current.toLocaleString();
+        if (progress < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    /* ═══════════════════════════════════════════
+       CANDLESTICK CHART GENERATION
+    ═══════════════════════════════════════════ */
+    let candlesAnimated = false;
+    function triggerCandleAnimations() {
+      if (candlesAnimated) return;
+      candlesAnimated = true;
+
+      const g = document.getElementById('candles');
+      if (!g) return;
+
+      const numCandles = 35;
+      const chartW = 700, chartH = 200;
+      const candleW = (chartW - 40) / numCandles;
+      let price = 130;
+
+      for (let i = 0; i < numCandles; i++) {
+        const open = price;
+        const change = (Math.random() - 0.45) * 15;
+        const close = open + change;
+        const high = Math.max(open, close) + Math.random() * 8;
+        const low = Math.min(open, close) - Math.random() * 8;
+        price = close;
+
+        const isUp = close >= open;
+        const color = isUp ? 'var(--up)' : 'var(--down)';
+
+        const x = 20 + i * candleW + candleW * 0.2;
+        const bodyW = candleW * 0.6;
+
+        const yTop = 20 + ((180 - high) / 180) * chartH;
+        const yBot = 20 + ((180 - low) / 180) * chartH;
+        const yOpen = 20 + ((180 - open) / 180) * chartH;
+        const yClose = 20 + ((180 - close) / 180) * chartH;
+
+        const candle = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        candle.classList.add('candle');
+        candle.style.transitionDelay = (i * 0.06) + 's';
+
+        // wick
+        const wick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        wick.setAttribute('x1', x + bodyW / 2);
+        wick.setAttribute('x2', x + bodyW / 2);
+        wick.setAttribute('y1', yTop);
+        wick.setAttribute('y2', yBot);
+        wick.setAttribute('stroke', color);
+        wick.setAttribute('stroke-width', '1');
+        candle.appendChild(wick);
+
+        // body
+        const body = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        body.setAttribute('x', x);
+        body.setAttribute('y', Math.min(yOpen, yClose));
+        body.setAttribute('width', bodyW);
+        body.setAttribute('height', Math.max(Math.abs(yClose - yOpen), 1));
+        body.setAttribute('fill', color);
+        body.setAttribute('rx', '1');
+        candle.appendChild(body);
+
+        g.appendChild(candle);
+
+        // trigger animation after paint
+        setTimeout(() => {
+          candle.classList.add('animate');
+        }, 100);
+      }
+
+      // animate SMA and RSI lines
+      setTimeout(() => {
+        document.querySelectorAll('#scene-indicators .candle[style]').forEach(el => {
+          el.classList.add('animate');
+          if (el.tagName === 'path' || el.tagName === 'PATH') {
+            el.style.strokeDashoffset = '0';
+          }
+        });
+      }, 2500);
+    }
+
+    /* ═══════════════════════════════════════════
+       SMOOTH SCROLL ENHANCEMENT
+    ═══════════════════════════════════════════ */
+    document.documentElement.style.scrollBehavior = 'smooth';
+  </script>
+</body>
+</html>
