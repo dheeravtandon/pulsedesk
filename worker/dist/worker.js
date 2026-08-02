@@ -504,12 +504,11 @@ var require_stocks = __commonJS({
     }
     async function fxRate(from, to) {
       if (!from || !to || from === to) return 1;
-      try {
-        const c = await chart(`${from}${to}=X`, "5d", "1d");
-        return c.price || 1;
-      } catch {
-        return 1;
-      }
+      const direct = await settled(chart(`${from}${to}=X`, "5d", "1d"));
+      if (direct && direct.price >= 0.1) return direct.price;
+      const inverse = await settled(chart(`${to}${from}=X`, "5d", "1d"));
+      if (inverse && inverse.price > 0) return 1 / inverse.price;
+      return direct && direct.price ? direct.price : 1;
     }
     module.exports = {
       chart,
@@ -1010,12 +1009,14 @@ var require_crypto = __commonJS({
 var require_market = __commonJS({
   "src/services/market.js"(exports, module) {
     "use strict";
+    var WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    var TRADING_WEEK = [1, 2, 3, 4, 5];
     var SESSIONS = [
-      { name: "NSE", tz: "Asia/Kolkata", open: [9, 15], close: [15, 30], flag: "\u{1F1EE}\u{1F1F3}" },
-      { name: "NYSE", tz: "America/New_York", open: [9, 30], close: [16, 0], flag: "\u{1F1FA}\u{1F1F8}" },
-      { name: "LSE", tz: "Europe/London", open: [8, 0], close: [16, 30], flag: "\u{1F1EC}\u{1F1E7}" },
-      { name: "TSE", tz: "Asia/Tokyo", open: [9, 0], close: [15, 0], flag: "\u{1F1EF}\u{1F1F5}" },
-      { name: "CRYPTO", tz: "UTC", open: [0, 0], close: [24, 0], flag: "\u20BF" }
+      { name: "NSE", code: "IN", city: "Mumbai", country: "India", tz: "Asia/Kolkata", open: [9, 15], close: [15, 30], days: TRADING_WEEK },
+      { name: "NYSE", code: "US", city: "New York", country: "United States", tz: "America/New_York", open: [9, 30], close: [16, 0], days: TRADING_WEEK },
+      { name: "LSE", code: "UK", city: "London", country: "United Kingdom", tz: "Europe/London", open: [8, 0], close: [16, 30], days: TRADING_WEEK },
+      { name: "TSE", code: "JP", city: "Tokyo", country: "Japan", tz: "Asia/Tokyo", open: [9, 0], close: [15, 0], days: TRADING_WEEK },
+      { name: "CRYPTO", code: "24/7", city: "UTC", country: "Everywhere at once", tz: "UTC", open: [0, 0], close: [24, 0], days: [0, 1, 2, 3, 4, 5, 6] }
     ];
     function partsIn(tz, date = /* @__PURE__ */ new Date()) {
       const f = new Intl.DateTimeFormat("en-GB", {
@@ -1023,31 +1024,76 @@ var require_market = __commonJS({
         weekday: "short",
         hour: "2-digit",
         minute: "2-digit",
-        hour12: false
+        hour12: false,
+        timeZoneName: "shortOffset"
       });
       const p = Object.fromEntries(f.formatToParts(date).map((x) => [x.type, x.value]));
-      return { weekday: p.weekday, minutes: parseInt(p.hour, 10) * 60 + parseInt(p.minute, 10), clock: `${p.hour}:${p.minute}` };
+      return {
+        weekday: p.weekday,
+        dayIndex: WEEK.indexOf(p.weekday),
+        minutes: parseInt(p.hour, 10) * 60 + parseInt(p.minute, 10),
+        clock: `${p.hour}:${p.minute}`,
+        offset: p.timeZoneName || ""
+      };
+    }
+    var hhmm = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+    function daysLabel(days) {
+      if (days.length === 7) return "Every day, all day";
+      const full = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const sorted = [...days].sort((a, b) => a - b);
+      const consecutive = sorted.every((d, i) => i === 0 || d === sorted[i - 1] + 1);
+      return consecutive && sorted.length > 2 ? `${full[sorted[0]]} \u2013 ${full[sorted[sorted.length - 1]]}` : sorted.map((d) => full[d]).join(", ");
+    }
+    function human(mins) {
+      const d = Math.floor(mins / 1440);
+      const h = Math.floor(mins % 1440 / 60);
+      const m = mins % 60;
+      if (d) return `${d}d ${h}h`;
+      if (h) return `${h}h ${m}m`;
+      return `${m}m`;
+    }
+    function untilNextOpen(dayIndex, minutes, openM, days) {
+      let add = minutes < openM ? 0 : 1;
+      while (!days.includes((dayIndex + add) % 7) && add < 14) add++;
+      return add * 1440 + openM - minutes;
     }
     function sessions(now = /* @__PURE__ */ new Date()) {
+      const at = now.getTime();
       return SESSIONS.map((s) => {
-        const { weekday, minutes, clock } = partsIn(s.tz, now);
-        const weekend = weekday === "Sat" || weekday === "Sun";
+        const { weekday, dayIndex, minutes, clock, offset } = partsIn(s.tz, now);
         const openM = s.open[0] * 60 + s.open[1];
         const closeM = s.close[0] * 60 + s.close[1];
-        const always = s.name === "CRYPTO";
-        const isOpen = always || !weekend && minutes >= openM && minutes < closeM;
-        const mins = always ? 0 : isOpen ? closeM - minutes : minutes < openM ? openM - minutes : 24 * 60 - minutes + openM;
-        const left = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+        const always = s.days.length === 7;
+        const tradingToday = s.days.includes(dayIndex);
+        const isOpen = always || tradingToday && minutes >= openM && minutes < closeM;
+        const toOpen = always ? 0 : untilNextOpen(dayIndex, minutes, openM, s.days);
+        const toClose = isOpen && !always ? closeM - minutes : 0;
+        const mins = always ? 0 : isOpen ? toClose : toOpen;
+        const nextOpenTs = always ? null : at + toOpen * 6e4;
+        const nextCloseTs = always ? null : isOpen ? at + toClose * 6e4 : nextOpenTs + (closeM - openM) * 6e4;
         return {
           name: s.name,
-          flag: s.flag,
+          code: s.code,
+          city: s.city,
+          country: s.country,
+          tz: s.tz,
+          tzOffset: offset,
           clock,
+          weekday,
           isOpen,
           always,
-          weekend,
+          tradingToday,
+          weekend: !tradingToday,
+          openLabel: always ? "00:00" : hhmm(openM),
+          closeLabel: always ? "24:00" : hhmm(closeM),
+          hoursLabel: always ? "Non-stop" : `${hhmm(openM)} \u2013 ${hhmm(closeM)}`,
+          daysLabel: daysLabel(s.days),
+          sessionMinutes: always ? 1440 : closeM - openM,
+          nextOpenTs,
+          nextCloseTs,
           inMinutes: mins,
           status: always ? "Open 24\xD77" : isOpen ? "Open now" : "Closed",
-          countdown: always ? "24\xD77" : isOpen ? `closes in ${left}` : `opens in ${left}`
+          countdown: always ? "24\xD77" : isOpen ? `closes in ${human(mins)}` : `opens in ${human(mins)}`
         };
       });
     }
