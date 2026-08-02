@@ -66,6 +66,11 @@ function buildIndex() {
     '<script src="config.js"></script>\n  <script src="web-bridge.js"></script>\n  <script src="app.js"></script>\n  <script src="install.js"></script>'
   );
 
+  html = html.replace(
+    '</body>',
+    '  <footer style="position:fixed;bottom:0;right:12px;font-size:9px;color:#5d6893;letter-spacing:1px;z-index:1">by Dheerav Tandon</footer>\n</body>'
+  );
+
   fs.writeFileSync(path.join(OUT, 'index.html'), html, 'utf8');
 }
 

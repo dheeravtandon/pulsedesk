@@ -1677,8 +1677,16 @@ function bind() {
   });
   $('fQty').addEventListener('input', updatePreview);
   $('fBuyCurrency').addEventListener('change', async (e) => {
+    // The field must keep showing a number in whatever currency is now selected — reinterpreting
+    // the same digits under a new unit is how $160.16 silently became "₹160.16" and got converted
+    // down to $1.66, wrecking the recorded cost basis.
+    const nativeVal = nativeBuyPrice();
     state.buyPriceCur = e.target.value;
     await refreshBuyPriceFx();
+    if (isFinite(nativeVal)) {
+      const shown = state.buyPriceCur === 'NATIVE' ? nativeVal : nativeVal / (state.buyPriceRate || 1);
+      $('fAvg').value = Number(shown.toFixed(shown < 10 ? 6 : 2));
+    }
     updatePreview();
   });
 
@@ -1763,8 +1771,20 @@ function bind() {
     updateSellPreview();
   });
   $('sSellCurrency').addEventListener('change', async (e) => {
+    // Same fix as the buy-price selector: convert the displayed numbers into the new currency
+    // instead of reinterpreting the same digits under a new unit.
+    const nativeVal = nativeSellPrice();
+    const nativeFees = nativeSellFees();
     state.sellPriceCur = e.target.value;
     await refreshSellPriceFx();
+    if (isFinite(nativeVal)) {
+      const shown = state.sellPriceCur === 'NATIVE' ? nativeVal : nativeVal / (state.sellPriceRate || 1);
+      $('sPrice').value = Number(shown.toFixed(shown < 10 ? 6 : 2));
+    }
+    if (nativeFees) {
+      const shownFees = state.sellPriceCur === 'NATIVE' ? nativeFees : nativeFees / (state.sellPriceRate || 1);
+      $('sFees').value = Number(shownFees.toFixed(shownFees < 10 ? 6 : 2));
+    }
     updateSellPreview();
   });
   $('btnCancelSell').addEventListener('click', () => ($('modalSell').hidden = true));
