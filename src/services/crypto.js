@@ -149,7 +149,12 @@ async function pumpedFallback(limit) {
       { symbol: 'ETH', name: 'Ethereum', pair: 'ETHUSD', price: 3200, change5h: 1.2, change24h: 2.1, high5h: 3250, low5h: 3150, volume5hUsd: 5200000, volume24hUsd: 15000000, trades5h: 0, source: 'snapshot', window: '1h' },
       { symbol: 'SOL', name: 'Solana', pair: 'SOLUSDT', price: 185, change5h: 2.8, change24h: 5.3, high5h: 190, low5h: 180, volume5hUsd: 2100000, volume24hUsd: 6500000, trades5h: 0, source: 'snapshot', window: '1h' },
       { symbol: 'XRP', name: 'XRP', pair: 'XRPUSDT', price: 2.45, change5h: 1.1, change24h: 3.2, high5h: 2.50, low5h: 2.40, volume5hUsd: 1800000, volume24hUsd: 5200000, trades5h: 0, source: 'snapshot', window: '1h' },
-      { symbol: 'BNB', name: 'BNB', pair: 'BNBUSDT', price: 685, change5h: 0.8, change24h: 2.4, high5h: 695, low5h: 675, volume5hUsd: 1500000, volume24hUsd: 4500000, trades5h: 0, source: 'snapshot', window: '1h' }
+      { symbol: 'BNB', name: 'BNB', pair: 'BNBUSDT', price: 685, change5h: 0.8, change24h: 2.4, high5h: 695, low5h: 675, volume5hUsd: 1500000, volume24hUsd: 4500000, trades5h: 0, source: 'snapshot', window: '1h' },
+      { symbol: 'DOGE', name: 'Dogecoin', pair: 'DOGEUSDT', price: 0.38, change5h: 1.8, change24h: 2.1, high5h: 0.40, low5h: 0.36, volume5hUsd: 1200000, volume24hUsd: 3200000, trades5h: 0, source: 'snapshot', window: '1h' },
+      { symbol: 'ADA', name: 'Cardano', pair: 'ADAUSDT', price: 0.95, change5h: 1.5, change24h: 1.8, high5h: 0.98, low5h: 0.92, volume5hUsd: 900000, volume24hUsd: 2800000, trades5h: 0, source: 'snapshot', window: '1h' },
+      { symbol: 'LINK', name: 'Chainlink', pair: 'LINKUSDT', price: 28.5, change5h: 1.2, change24h: 1.5, high5h: 29.5, low5h: 27.8, volume5hUsd: 750000, volume24hUsd: 1900000, trades5h: 0, source: 'snapshot', window: '1h' },
+      { symbol: 'MATIC', name: 'Polygon', pair: 'MATICUSDT', price: 0.68, change5h: 0.7, change24h: 0.9, high5h: 0.71, low5h: 0.65, volume5hUsd: 600000, volume24hUsd: 1600000, trades5h: 0, source: 'snapshot', window: '1h' },
+      { symbol: 'USDT', name: 'Tether', pair: 'USDTUSDT', price: 1.0, change5h: 0.0, change24h: 0.0, high5h: 1.01, low5h: 0.99, volume5hUsd: 5000000, volume24hUsd: 12000000, trades5h: 0, source: 'snapshot', window: '1h' }
     ].slice(0, limit);
   }
   return (j || [])
